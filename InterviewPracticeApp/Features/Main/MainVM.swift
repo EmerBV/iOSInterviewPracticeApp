@@ -82,6 +82,20 @@ final class MainVM: MainVMProtocol {
                 createViewController: { DelegationVC() }
             ),
             Exercise(
+                title: "SwiftUI Integration",
+                description: "Integrar SwiftUI en proyecto UIKit con llamadas a API. Demuestra el uso completo de SwiftUI con su propia navegación.",
+                difficulty: .medium,
+                tags: ["SwiftUI", "UIKit", "Integration", "API", "Navigation"],
+                createViewController: { SwiftUIIntegrationVC() }
+            ),
+            Exercise(
+                title: "SwiftUI + Custom Nav",
+                description: "Integración híbrida SwiftUI + UIKit con navegación personalizada. Controles UIKit en navigation bar, contenido SwiftUI, comunicación bidireccional.",
+                difficulty: .hard,
+                tags: ["SwiftUI", "UIKit", "Hybrid", "Custom Nav", "Advanced"],
+                createViewController: { SwiftUIIntegrationWithNavVC() }
+            ),
+            Exercise(
                 title: "Documentos de Entrevista",
                 description: "Visualizar PDFs con preguntas y respuestas para entrevistas iOS. Incluye contenido para desarrolladores junior y senior, con búsqueda avanzada y categorización por temas.",
                 difficulty: .medium,
