@@ -20,6 +20,15 @@ final class MainVC: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(ExerciseCell.self, forCellReuseIdentifier: ExerciseCell.identifier)
+        
+        // Configurar para altura dinámica
+        tableView.estimatedRowHeight = 100 // Altura estimada base
+        tableView.rowHeight = UITableView.automaticDimension
+        
+        // Separadores personalizados
+        tableView.separatorStyle = .singleLine
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
@@ -92,7 +101,30 @@ extension MainVC: UITableViewDataSource, UITableViewDelegate {
         navigationController?.pushViewController(viewController, animated: true)
     }
     
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 80
+    // Eliminar el método heightForRowAt para usar altura automática
+    // func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+    //     return 80
+    // }
+    
+    // Opcional: Añadir estimación de altura más precisa basada en contenido
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        let exercise = viewModel.exercise(at: indexPath.row)
+        
+        // Estimar altura basada en el contenido
+        let baseHeight: CGFloat = 60 // Altura mínima para título y padding
+        let descriptionLines = exercise.description.count / 50 + 1 // Aproximar líneas de descripción
+        let descriptionHeight = CGFloat(descriptionLines) * 20 // ~20 puntos por línea
+        let tagsHeight: CGFloat = 30 // Altura para tags
+        
+        return baseHeight + descriptionHeight + tagsHeight
+    }
+    
+    // Opcional: Optimización para scroll suave
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        // Animación sutil al mostrar celdas
+        cell.alpha = 0.8
+        UIView.animate(withDuration: 0.3) {
+            cell.alpha = 1.0
+        }
     }
 }

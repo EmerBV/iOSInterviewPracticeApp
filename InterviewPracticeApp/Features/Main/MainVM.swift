@@ -80,6 +80,13 @@ final class MainVM: MainVMProtocol {
                 difficulty: .easy,
                 tags: ["Delegate", "Pattern", "Communication"],
                 createViewController: { DelegationVC() }
+            ),
+            Exercise(
+                title: "Documentos de Entrevista",
+                description: "Visualizar PDFs con preguntas y respuestas para entrevistas iOS. Incluye contenido para desarrolladores junior y senior, con búsqueda avanzada y categorización por temas.",
+                difficulty: .medium,
+                tags: ["PDF", "Documentos", "Entrevistas", "Swift", "PDFKit"],
+                createViewController: { DocumentViewerVC() }
             )
         ]
     }
