@@ -47,6 +47,13 @@ final class MainVM: MainVMProtocol {
                 createViewController: { NetworkRequestVC() }
             ),
             Exercise(
+                title: "Weather API with Combine",
+                description: "App del clima usando URLSession y Combine. Implementa llamadas a API, manejo de errores, búsqueda de ciudades, pronóstico y UI reactiva con Publishers.",
+                difficulty: .hard,
+                tags: ["Combine", "URLSession", "API", "Weather", "Publishers", "MVVM"],
+                createViewController: { WeatherVC() }
+            ),
+            Exercise(
                 title: "Core Data CRUD",
                 description: "Operaciones básicas con Core Data",
                 difficulty: .hard,
