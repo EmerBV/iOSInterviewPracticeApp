@@ -10,86 +10,288 @@ import Combine
 
 // MARK: - Network Service Protocol
 protocol NetworkServiceProtocol {
-    func fetchPosts() -> AnyPublisher<[Post], NetworkError>
-    func fetchUsers() -> AnyPublisher<[User], NetworkError>
-    func createPost(_ post: CreatePostRequest) -> AnyPublisher<Post, NetworkError>
+    /*
+     func fetchPosts() -> AnyPublisher<[Post], NetworkError>
+     func fetchUsers() -> AnyPublisher<[User], NetworkError>
+     func createPost(_ post: CreatePostRequest) -> AnyPublisher<Post, NetworkError>
+     */
+    
+    func request<T: Codable>(
+        _ request: NetworkRequest,
+        responseType: T.Type
+    ) async throws -> T
+    
+    func requestPublisher<T: Codable>(
+        _ request: NetworkRequest,
+        responseType: T.Type
+    ) -> AnyPublisher<T, NetworkError>
 }
 
 // MARK: - Network Service Implementation
 final class NetworkService: NetworkServiceProtocol {
+    /*
+     private let session: URLSession
+     private let baseURL = "https://jsonplaceholder.typicode.com"
+     
+     init(session: URLSession = .shared) {
+     self.session = session
+     }
+     
+     func fetchPosts() -> AnyPublisher<[Post], NetworkError> {
+     guard let url = URL(string: "\(baseURL)/posts") else {
+     return Fail(error: NetworkError.invalidURL)
+     .eraseToAnyPublisher()
+     }
+     
+     return session.dataTaskPublisher(for: url)
+     .map(\.data)
+     .decode(type: [Post].self, decoder: JSONDecoder())
+     .mapError { error in
+     if error is DecodingError {
+     return NetworkError.decodingError
+     } else {
+     return NetworkError.networkError(error)
+     }
+     }
+     .eraseToAnyPublisher()
+     }
+     
+     func fetchUsers() -> AnyPublisher<[User], NetworkError> {
+     guard let url = URL(string: "\(baseURL)/users") else {
+     return Fail(error: NetworkError.invalidURL)
+     .eraseToAnyPublisher()
+     }
+     
+     return session.dataTaskPublisher(for: url)
+     .map(\.data)
+     .decode(type: [User].self, decoder: JSONDecoder())
+     .mapError { error in
+     if error is DecodingError {
+     return NetworkError.decodingError
+     } else {
+     return NetworkError.networkError(error)
+     }
+     }
+     .eraseToAnyPublisher()
+     }
+     
+     func createPost(_ post: CreatePostRequest) -> AnyPublisher<Post, NetworkError> {
+     guard let url = URL(string: "\(baseURL)/posts") else {
+     return Fail(error: NetworkError.invalidURL)
+     .eraseToAnyPublisher()
+     }
+     
+     var request = URLRequest(url: url)
+     request.httpMethod = "POST"
+     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+     
+     do {
+     request.httpBody = try JSONEncoder().encode(post)
+     } catch {
+     return Fail(error: NetworkError.networkError(error))
+     .eraseToAnyPublisher()
+     }
+     
+     return session.dataTaskPublisher(for: request)
+     .map(\.data)
+     .decode(type: Post.self, decoder: JSONDecoder())
+     .mapError { error in
+     if error is DecodingError {
+     return NetworkError.decodingError
+     } else {
+     return NetworkError.networkError(error)
+     }
+     }
+     .eraseToAnyPublisher()
+     }
+     */
     
+    // MARK: - Properties
     private let session: URLSession
-    private let baseURL = "https://jsonplaceholder.typicode.com"
+    private let decoder: JSONDecoder
+    private let encoder: JSONEncoder
     
-    init(session: URLSession = .shared) {
+    // MARK: - Initialization
+    init(
+        session: URLSession = .shared,
+        decoder: JSONDecoder = JSONDecoder(),
+        encoder: JSONEncoder = JSONEncoder()
+    ) {
         self.session = session
+        self.decoder = decoder
+        self.encoder = encoder
+        
+        // Configure decoder
+        self.decoder.dateDecodingStrategy = .iso8601
+        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        // Configure encoder
+        self.encoder.dateEncodingStrategy = .iso8601
+        self.encoder.keyEncodingStrategy = .convertToSnakeCase
     }
     
-    func fetchPosts() -> AnyPublisher<[Post], NetworkError> {
-        guard let url = URL(string: "\(baseURL)/posts") else {
-            return Fail(error: NetworkError.invalidURL)
-                .eraseToAnyPublisher()
-        }
-        
-        return session.dataTaskPublisher(for: url)
-            .map(\.data)
-            .decode(type: [Post].self, decoder: JSONDecoder())
-            .mapError { error in
-                if error is DecodingError {
-                    return NetworkError.decodingError
-                } else {
-                    return NetworkError.networkError(error)
-                }
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    func fetchUsers() -> AnyPublisher<[User], NetworkError> {
-        guard let url = URL(string: "\(baseURL)/users") else {
-            return Fail(error: NetworkError.invalidURL)
-                .eraseToAnyPublisher()
-        }
-        
-        return session.dataTaskPublisher(for: url)
-            .map(\.data)
-            .decode(type: [User].self, decoder: JSONDecoder())
-            .mapError { error in
-                if error is DecodingError {
-                    return NetworkError.decodingError
-                } else {
-                    return NetworkError.networkError(error)
-                }
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    func createPost(_ post: CreatePostRequest) -> AnyPublisher<Post, NetworkError> {
-        guard let url = URL(string: "\(baseURL)/posts") else {
-            return Fail(error: NetworkError.invalidURL)
-                .eraseToAnyPublisher()
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    // MARK: - Async/Await Implementation
+    func request<T: Codable>(
+        _ request: NetworkRequest,
+        responseType: T.Type
+    ) async throws -> T {
+        let urlRequest = try buildURLRequest(from: request)
         
         do {
-            request.httpBody = try JSONEncoder().encode(post)
+            let (data, response) = try await session.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.networkError(URLError(.badServerResponse))
+            }
+            
+            try validateResponse(httpResponse)
+            
+            guard !data.isEmpty else {
+                throw NetworkError.noData
+            }
+            
+            do {
+                let decodedObject = try decoder.decode(T.self, from: data)
+                return decodedObject
+            } catch {
+                throw NetworkError.decodingError(error)
+            }
+            
+        } catch let urlError as URLError {
+            throw mapURLError(urlError)
+        } catch let networkError as NetworkError {
+            throw networkError
         } catch {
-            return Fail(error: NetworkError.networkError(error))
+            throw NetworkError.networkError(error)
+        }
+    }
+    
+    // MARK: - Combine Implementation
+    func requestPublisher<T: Codable>(
+        _ request: NetworkRequest,
+        responseType: T.Type
+    ) -> AnyPublisher<T, NetworkError> {
+        do {
+            let urlRequest = try buildURLRequest(from: request)
+            
+            return session.dataTaskPublisher(for: urlRequest)
+                .tryMap { [weak self] data, response -> Data in
+                    guard let self = self else {
+                        throw NetworkError.networkError(URLError(.unknown))
+                    }
+                    
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw NetworkError.networkError(URLError(.badServerResponse))
+                    }
+                    
+                    try self.validateResponse(httpResponse)
+                    
+                    guard !data.isEmpty else {
+                        throw NetworkError.noData
+                    }
+                    
+                    return data
+                }
+                .decode(type: T.self, decoder: decoder)
+                .mapError { [weak self] error -> NetworkError in
+                    guard let self = self else {
+                        return NetworkError.networkError(error)
+                    }
+                    
+                    if let urlError = error as? URLError {
+                        return self.mapURLError(urlError)
+                    } else if let decodingError = error as? DecodingError {
+                        return NetworkError.decodingError(decodingError)
+                    } else {
+                        return NetworkError.networkError(error)
+                    }
+                }
+                .eraseToAnyPublisher()
+            
+        } catch {
+            return Fail(error: error as? NetworkError ?? NetworkError.invalidURL)
                 .eraseToAnyPublisher()
         }
-        
-        return session.dataTaskPublisher(for: request)
-            .map(\.data)
-            .decode(type: Post.self, decoder: JSONDecoder())
-            .mapError { error in
-                if error is DecodingError {
-                    return NetworkError.decodingError
-                } else {
-                    return NetworkError.networkError(error)
-                }
-            }
-            .eraseToAnyPublisher()
     }
 }
+
+// MARK: - Private Methods
+private extension NetworkService {
+    
+    func buildURLRequest(from request: NetworkRequest) throws -> URLRequest {
+        var components = URLComponents(string: request.baseURL + request.path)
+        
+        // Add query parameters for GET requests
+        if request.method == .GET, let parameters = request.parameters {
+            components?.queryItems = parameters.map { key, value in
+                URLQueryItem(name: key, value: "\(value)")
+            }
+        }
+        
+        guard let url = components?.url else {
+            throw NetworkError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = request.method.rawValue
+        urlRequest.timeoutInterval = request.timeout
+        
+        // Add headers
+        if let headers = request.headers {
+            headers.forEach { key, value in
+                urlRequest.setValue(value, forHTTPHeaderField: key)
+            }
+        }
+        
+        // Add default headers
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        // Add body for non-GET requests
+        if request.method != .GET {
+            if let body = request.body {
+                urlRequest.httpBody = body
+            } else if let parameters = request.parameters {
+                do {
+                    urlRequest.httpBody = try JSONSerialization.data(
+                        withJSONObject: parameters,
+                        options: []
+                    )
+                } catch {
+                    throw NetworkError.networkError(error)
+                }
+            }
+        }
+        
+        return urlRequest
+    }
+    
+    func validateResponse(_ response: HTTPURLResponse) throws {
+        switch response.statusCode {
+        case 200...299:
+            break
+        case 401:
+            throw NetworkError.unauthorized
+        case 403:
+            throw NetworkError.forbidden
+        case 404:
+            throw NetworkError.notFound
+        case 400...499, 500...599:
+            throw NetworkError.serverError(response.statusCode)
+        default:
+            throw NetworkError.networkError(URLError(.badServerResponse))
+        }
+    }
+    
+    func mapURLError(_ error: URLError) -> NetworkError {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost:
+            return .noInternetConnection
+        case .timedOut:
+            return .timeout
+        default:
+            return .networkError(error)
+        }
+    }
+}
+

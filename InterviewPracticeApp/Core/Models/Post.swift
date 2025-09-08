@@ -7,11 +7,23 @@
 
 import Foundation
 
-struct Post: Codable {
+struct Post: Codable, Identifiable {
     let id: Int
     let userId: Int
     let title: String
     let body: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id, userId, title, body
+    }
+}
+
+struct PostResponse: Codable {
+    let posts: [Post]
+    
+    enum CodingKeys: String, CodingKey {
+        case posts
+    }
 }
 
 struct CreatePostRequest: Codable {

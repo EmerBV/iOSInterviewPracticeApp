@@ -7,22 +7,40 @@
 
 import Foundation
 
-enum NetworkError: Error, LocalizedError {
+enum NetworkError: LocalizedError {
     case invalidURL
     case noData
-    case decodingError
+    case decodingError(Error)
     case networkError(Error)
+    case serverError(Int)
+    case unauthorized
+    case forbidden
+    case notFound
+    case timeout
+    case noInternetConnection
     
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "URL inválida"
+            return "Invalid URL"
         case .noData:
-            return "No se recibieron datos"
-        case .decodingError:
-            return "Error al decodificar la respuesta"
+            return "No data received"
+        case .decodingError(let error):
+            return "Decoding error: \(error.localizedDescription)"
         case .networkError(let error):
-            return "Error de red: \(error.localizedDescription)"
+            return "Network error: \(error.localizedDescription)"
+        case .serverError(let code):
+            return "Server error with code: \(code)"
+        case .unauthorized:
+            return "Unauthorized access"
+        case .forbidden:
+            return "Forbidden access"
+        case .notFound:
+            return "Resource not found"
+        case .timeout:
+            return "Request timeout"
+        case .noInternetConnection:
+            return "No internet connection"
         }
     }
 }
