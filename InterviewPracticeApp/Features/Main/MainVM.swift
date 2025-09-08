@@ -40,7 +40,7 @@ final class MainVM: MainVMProtocol {
                 createViewController: { CustomCollectionVC() }
             ),
             Exercise(
-                title: "Network Request",
+                title: "Generic Network Request",
                 description: "Realizar peticiones HTTP con URLSession",
                 difficulty: .easy,
                 tags: ["Networking", "URLSession", "JSON"],

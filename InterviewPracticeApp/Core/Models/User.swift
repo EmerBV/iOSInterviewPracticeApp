@@ -12,10 +12,10 @@ struct User: Codable, Identifiable {
     let name: String
     let username: String
     let email: String
-    let address: Address
+    let address: Address?
     let phone: String
-    let website: String
-    let company: Company
+    let website: String?
+    let company: Company?
     
     enum CodingKeys: String, CodingKey {
         case id, name, username, email, address, phone, website, company

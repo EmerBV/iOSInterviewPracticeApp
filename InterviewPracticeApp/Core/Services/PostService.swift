@@ -16,29 +16,29 @@ final class PostService {
         self.networkService = networkService
     }
     
-    // Async/Await methods
-    func fetchPosts() async throws -> PostResponse {
+    // MARK: - Async/Await methods
+    func fetchPosts() async throws -> [Post] {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/posts",
             method: .GET
         )
         
-        return try await networkService.request(request, responseType: PostResponse.self)
+        return try await networkService.request(request, responseType: [Post].self)
     }
     
-    func fetchUsers() async throws -> UserResponse {
+    func fetchUsers() async throws -> [User] {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/users",
             method: .GET
         )
         
-        return try await networkService.request(request, responseType: UserResponse.self)
+        return try await networkService.request(request, responseType: [User].self)
     }
     
-    func createPost(title: String, body: String) async throws -> Post {
-        let parameters = ["title": title, "body": body]
+    func createPost(title: String, body: String, userId: Int = 1) async throws -> Post {
+        let parameters = ["title": title, "body": body, "userId": userId] as [String : Any]
         let request = APIRequest(
             baseURL: baseURL,
             path: "/posts",
@@ -49,31 +49,29 @@ final class PostService {
         return try await networkService.request(request, responseType: Post.self)
     }
     
-    // Combine methods
-    func fetchPostsPublisher() -> AnyPublisher<PostResponse, NetworkError> {
+    // MARK: - Combine methods
+    func fetchPostsPublisher() -> AnyPublisher<[Post], NetworkError> {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/posts",
             method: .GET
         )
         
-        return networkService.requestPublisher(request, responseType: PostResponse.self)
-            .eraseToAnyPublisher()
+        return networkService.requestPublisher(request, responseType: [Post].self)
     }
     
-    func fetchUsersPublisher() -> AnyPublisher<UserResponse, NetworkError> {
+    func fetchUsersPublisher() -> AnyPublisher<[User], NetworkError> {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/users",
             method: .GET
         )
         
-        return networkService.requestPublisher(request, responseType: UserResponse.self)
-            .eraseToAnyPublisher()
+        return networkService.requestPublisher(request, responseType: [User].self)
     }
     
-    func createPostPublisher(title: String, body: String) -> AnyPublisher<Post, NetworkError> {
-        let parameters = ["title": title, "body": body]
+    func createPostPublisher(title: String, body: String, userId: Int = 1) -> AnyPublisher<Post, NetworkError> {
+        let parameters = ["title": title, "body": body, "userId": userId] as [String : Any]
         let request = APIRequest(
             baseURL: baseURL,
             path: "/posts",

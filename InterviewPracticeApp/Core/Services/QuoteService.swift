@@ -43,7 +43,7 @@ final class QuoteService: QuoteServiceProtocol {
             .mapError { error in
                 print("Error fetching quotes: \(error)")
                 if error is DecodingError {
-                    return NetworkError.decodingError
+                    return NetworkError.decodingError(error)
                 } else {
                     return NetworkError.networkError(error)
                 }
@@ -70,7 +70,7 @@ final class QuoteService: QuoteServiceProtocol {
             .mapError { error in
                 print("Error fetching random quote: \(error)")
                 if error is DecodingError {
-                    return NetworkError.decodingError
+                    return NetworkError.decodingError(error)
                 } else {
                     return NetworkError.networkError(error)
                 }
@@ -97,7 +97,7 @@ final class QuoteService: QuoteServiceProtocol {
             .mapError { error in
                 print("Error searching quotes: \(error)")
                 if error is DecodingError {
-                    return NetworkError.decodingError
+                    return NetworkError.decodingError(error)
                 } else {
                     return NetworkError.networkError(error)
                 }

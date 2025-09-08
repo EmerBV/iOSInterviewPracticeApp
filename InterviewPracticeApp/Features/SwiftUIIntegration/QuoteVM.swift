@@ -194,6 +194,18 @@ final class QuoteVM: QuoteVMProtocol {
                 }
             }
             return "Error de red"
+        case .serverError(_):
+            return "Error del servidor"
+        case .unauthorized:
+            return "No autorizado"
+        case .forbidden:
+            return "Acceso denegado"
+        case .notFound:
+            return "Recurso no encontrado"
+        case .timeout:
+            return "Tiempo de espera agotado"
+        case .noInternetConnection:
+            return "Sin conexión a internet"
         }
     }
 }

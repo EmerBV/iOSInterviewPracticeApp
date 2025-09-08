@@ -11,7 +11,7 @@ import Combine
 final class NetworkRequestVC: BaseViewController {
     
     // MARK: - Properties
-    private var viewModel: NetworkVMProtocol
+    private var viewModel: NetworkVM
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - UI Components
@@ -55,13 +55,10 @@ final class NetworkRequestVC: BaseViewController {
         )
     }()
     
-    // MARK: - Data
-    private var posts: [Post] = []
-    private var users: [User] = []
     private var isShowingPosts = true
     
     // MARK: - Initialization
-    init(viewModel: NetworkVMProtocol = NetworkVM()) {
+    init(viewModel: NetworkVM = NetworkVM()) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
@@ -75,7 +72,10 @@ final class NetworkRequestVC: BaseViewController {
         super.viewDidLoad()
         setupUI()
         setupBindings()
-        viewModel.fetchPosts()
+        
+        Task {
+            await viewModel.fetchPosts()
+        }
     }
     
     // MARK: - Setup Methods
@@ -103,26 +103,27 @@ final class NetworkRequestVC: BaseViewController {
     }
     
     private func setupBindings() {
+        // Binding para posts
         viewModel.postsPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] posts in
-                self?.posts = posts
+            .sink { [weak self] _ in
                 if self?.isShowingPosts == true {
                     self?.tableView.reloadData()
                 }
             }
             .store(in: &cancellables)
         
+        // Binding para users
         viewModel.usersPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] users in
-                self?.users = users
+            .sink { [weak self] _ in
                 if self?.isShowingPosts == false {
                     self?.tableView.reloadData()
                 }
             }
             .store(in: &cancellables)
         
+        // Binding para loading state
         viewModel.isLoadingPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isLoading in
@@ -135,10 +136,12 @@ final class NetworkRequestVC: BaseViewController {
             }
             .store(in: &cancellables)
         
+        // Binding para errores
         viewModel.errorPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] error in
-                self?.showError(error)
+            .compactMap { $0 } // Solo procesar errores no nil
+            .sink { [weak self] errorMessage in
+                self?.showAlert(title: "Error", message: errorMessage)
             }
             .store(in: &cancellables)
     }
@@ -148,20 +151,24 @@ final class NetworkRequestVC: BaseViewController {
         isShowingPosts = segmentedControl.selectedSegmentIndex == 0
         addButton.isEnabled = isShowingPosts
         
-        if isShowingPosts && posts.isEmpty {
-            viewModel.fetchPosts()
-        } else if !isShowingPosts && users.isEmpty {
-            viewModel.fetchUsers()
+        Task {
+            if isShowingPosts && viewModel.posts.isEmpty {
+                await viewModel.fetchPosts()
+            } else if !isShowingPosts && viewModel.users.isEmpty {
+                await viewModel.fetchUsers()
+            }
         }
         
         tableView.reloadData()
     }
     
     @objc private func refreshData() {
-        if isShowingPosts {
-            viewModel.fetchPosts()
-        } else {
-            viewModel.fetchUsers()
+        Task {
+            if isShowingPosts {
+                await viewModel.fetchPosts()
+            } else {
+                await viewModel.fetchUsers()
+            }
         }
     }
     
@@ -195,7 +202,9 @@ final class NetworkRequestVC: BaseViewController {
                 return
             }
             
-            self?.viewModel.createPost(title: title, body: body, userId: 1)
+            Task {
+                await self?.viewModel.createPost(title: title, body: body, userId: 1)
+            }
         }
         
         let cancelAction = UIAlertAction(title: "Cancelar", style: .cancel)
@@ -211,7 +220,7 @@ final class NetworkRequestVC: BaseViewController {
 extension NetworkRequestVC: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return isShowingPosts ? posts.count : users.count
+        return isShowingPosts ? viewModel.posts.count : viewModel.users.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -220,7 +229,7 @@ extension NetworkRequestVC: UITableViewDataSource, UITableViewDelegate {
                 return UITableViewCell()
             }
             
-            let post = posts[indexPath.row]
+            let post = viewModel.posts[indexPath.row]
             cell.configure(with: post)
             return cell
         } else {
@@ -228,7 +237,7 @@ extension NetworkRequestVC: UITableViewDataSource, UITableViewDelegate {
                 return UITableViewCell()
             }
             
-            let user = users[indexPath.row]
+            let user = viewModel.users[indexPath.row]
             cell.configure(with: user)
             return cell
         }
@@ -238,10 +247,10 @@ extension NetworkRequestVC: UITableViewDataSource, UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         
         if isShowingPosts {
-            let post = posts[indexPath.row]
+            let post = viewModel.posts[indexPath.row]
             showAlert(title: post.title, message: post.body)
         } else {
-            let user = users[indexPath.row]
+            let user = viewModel.users[indexPath.row]
             showAlert(title: user.name, message: "Email: \(user.email)\nTeléfono: \(user.phone)")
         }
     }

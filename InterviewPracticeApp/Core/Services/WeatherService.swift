@@ -20,11 +20,11 @@ final class WeatherService: WeatherServiceProtocol {
     
     // MARK: - Properties
     private let session: URLSession
-    private let baseURL = "https://api.weatherapi.com/v1"
+    private let baseURL = "http://api.weatherapi.com/v1"
     
     // Nota: En una app real, esta clave debe estar en un archivo de configuración seguro
     // o obtenerse del backend. Aquí usamos una clave de ejemplo.
-    private let apiKey = "demo_api_key"
+    private let apiKey = "81e77507295a4002b39133154250809"
     
     // MARK: - Initialization
     init(session: URLSession = .shared) {

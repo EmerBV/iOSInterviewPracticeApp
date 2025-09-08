@@ -17,17 +17,3 @@ struct Post: Codable, Identifiable {
         case id, userId, title, body
     }
 }
-
-struct PostResponse: Codable {
-    let posts: [Post]
-    
-    enum CodingKeys: String, CodingKey {
-        case posts
-    }
-}
-
-struct CreatePostRequest: Codable {
-    let title: String
-    let body: String
-    let userId: Int
-}

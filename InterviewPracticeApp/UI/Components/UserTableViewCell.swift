@@ -127,7 +127,7 @@ final class UserTableViewCell: UITableViewCell {
         usernameLabel.text = "@\(user.username)"
         emailLabel.text = user.email
         phoneLabel.text = user.phone
-        companyLabel.text = user.company.name
+        companyLabel.text = user.company?.name
         
         // Create avatar with initials
         let initials = user.name.components(separatedBy: " ")

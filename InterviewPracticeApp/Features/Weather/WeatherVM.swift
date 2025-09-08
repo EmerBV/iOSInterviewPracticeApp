@@ -46,7 +46,16 @@ final class WeatherVM: WeatherVMProtocol {
     private var searchCancellable: AnyCancellable?
     
     // MARK: - Initialization
+    // MOCK
+    /*
     init(weatherService: WeatherServiceProtocol = MockWeatherService()) {
+        self.weatherService = weatherService
+        setupInitialData()
+    }
+     */
+    
+    // API
+    init(weatherService: WeatherServiceProtocol = WeatherService()) {
         self.weatherService = weatherService
         setupInitialData()
     }
