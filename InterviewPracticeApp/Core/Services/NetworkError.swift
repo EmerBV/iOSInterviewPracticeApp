@@ -44,3 +44,30 @@ enum NetworkError: LocalizedError {
         }
     }
 }
+
+extension NetworkError {
+    var asWeatherError: WeatherError {
+        switch self {
+        case .invalidURL:
+            return .invalidURL
+        case .noData:
+            return .noData
+        case .decodingError:
+            return .decodingError
+        case .networkError(let error):
+            return .networkError(error)
+        case .serverError(let code):
+            return .apiError("Server error: \(code)")
+        case .unauthorized:
+            return .apiError("Unauthorized")
+        case .forbidden:
+            return .apiError("Forbidden")
+        case .notFound:
+            return .apiError("Not found")
+        case .timeout:
+            return .networkError(URLError(.timedOut))
+        case .noInternetConnection:
+            return .networkError(URLError(.notConnectedToInternet))
+        }
+    }
+}

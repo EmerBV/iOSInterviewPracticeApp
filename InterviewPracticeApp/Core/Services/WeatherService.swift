@@ -8,131 +8,238 @@
 import Foundation
 import Combine
 
-// MARK: - Weather Service Protocol
-protocol WeatherServiceProtocol {
-    func fetchCurrentWeather(for city: String) -> AnyPublisher<WeatherResponse, WeatherError>
-    func fetchForecast(for city: String, days: Int) -> AnyPublisher<WeatherResponse, WeatherError>
-    func searchCities(query: String) -> AnyPublisher<[Location], WeatherError>
-}
+/*
+ // MARK: - Weather Service Protocol
+ protocol WeatherServiceProtocol {
+ func fetchCurrentWeather(for city: String) -> AnyPublisher<WeatherResponse, WeatherError>
+ func fetchForecast(for city: String, days: Int) -> AnyPublisher<WeatherResponse, WeatherError>
+ func searchCities(query: String) -> AnyPublisher<[Location], WeatherError>
+ }
+ 
+ // MARK: - Weather Service Implementation
+ final class WeatherService: WeatherServiceProtocol {
+ 
+ // MARK: - Properties
+ private let session: URLSession
+ private let baseURL = "http://api.weatherapi.com/v1"
+ 
+ // Nota: En una app real, esta clave debe estar en un archivo de configuración seguro
+ // o obtenerse del backend. Aquí usamos una clave de ejemplo.
+ private let apiKey = "81e77507295a4002b39133154250809"
+ 
+ // MARK: - Initialization
+ init(session: URLSession = .shared) {
+ self.session = session
+ }
+ 
+ // MARK: - Public Methods
+ func fetchCurrentWeather(for city: String) -> AnyPublisher<WeatherResponse, WeatherError> {
+ guard let url = buildURL(endpoint: "current.json", city: city) else {
+ return Fail(error: WeatherError.invalidURL)
+ .eraseToAnyPublisher()
+ }
+ 
+ return performRequest(url: url)
+ }
+ 
+ func fetchForecast(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, WeatherError> {
+ guard let url = buildURL(endpoint: "forecast.json", city: city, days: days) else {
+ return Fail(error: WeatherError.invalidURL)
+ .eraseToAnyPublisher()
+ }
+ 
+ return performRequest(url: url)
+ }
+ 
+ func searchCities(query: String) -> AnyPublisher<[Location], WeatherError> {
+ guard let url = buildSearchURL(query: query) else {
+ return Fail(error: WeatherError.invalidURL)
+ .eraseToAnyPublisher()
+ }
+ 
+ return session.dataTaskPublisher(for: url)
+ .tryMap { data, response -> Data in
+ try self.validateResponse(data: data, response: response)
+ return data
+ }
+ .decode(type: [Location].self, decoder: JSONDecoder())
+ .mapError { error in
+ self.mapError(error)
+ }
+ .eraseToAnyPublisher()
+ }
+ 
+ // MARK: - Private Methods
+ private func buildURL(endpoint: String, city: String, days: Int? = nil) -> URL? {
+ var components = URLComponents(string: "\(baseURL)/\(endpoint)")
+ 
+ var queryItems = [
+ URLQueryItem(name: "key", value: apiKey),
+ URLQueryItem(name: "q", value: city),
+ URLQueryItem(name: "aqi", value: "yes")
+ ]
+ 
+ if let days = days {
+ queryItems.append(URLQueryItem(name: "days", value: "\(days)"))
+ }
+ 
+ components?.queryItems = queryItems
+ return components?.url
+ }
+ 
+ private func buildSearchURL(query: String) -> URL? {
+ var components = URLComponents(string: "\(baseURL)/search.json")
+ components?.queryItems = [
+ URLQueryItem(name: "key", value: apiKey),
+ URLQueryItem(name: "q", value: query)
+ ]
+ return components?.url
+ }
+ 
+ private func performRequest(url: URL) -> AnyPublisher<WeatherResponse, WeatherError> {
+ return session.dataTaskPublisher(for: url)
+ .tryMap { data, response -> Data in
+ try self.validateResponse(data: data, response: response)
+ return data
+ }
+ .decode(type: WeatherResponse.self, decoder: JSONDecoder())
+ .mapError { error in
+ self.mapError(error)
+ }
+ .eraseToAnyPublisher()
+ }
+ 
+ private func validateResponse(data: Data, response: URLResponse) throws -> Data {
+ guard let httpResponse = response as? HTTPURLResponse else {
+ throw WeatherError.networkError(URLError(.badServerResponse))
+ }
+ 
+ guard 200...299 ~= httpResponse.statusCode else {
+ // Try to decode error response
+ if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+ let error = errorData["error"] as? [String: Any],
+ let message = error["message"] as? String {
+ throw WeatherError.apiError(message)
+ }
+ throw WeatherError.apiError("HTTP \(httpResponse.statusCode)")
+ }
+ 
+ return data
+ }
+ 
+ private func mapError(_ error: Error) -> WeatherError {
+ if let weatherError = error as? WeatherError {
+ return weatherError
+ } else if error is DecodingError {
+ return .decodingError
+ } else {
+ return .networkError(error)
+ }
+ }
+ }
+ */
 
-// MARK: - Weather Service Implementation
-final class WeatherService: WeatherServiceProtocol {
-    
-    // MARK: - Properties
-    private let session: URLSession
+class WeatherService {
+    private let networkService: NetworkServiceProtocol
     private let baseURL = "http://api.weatherapi.com/v1"
     
     // Nota: En una app real, esta clave debe estar en un archivo de configuración seguro
     // o obtenerse del backend. Aquí usamos una clave de ejemplo.
     private let apiKey = "81e77507295a4002b39133154250809"
     
-    // MARK: - Initialization
-    init(session: URLSession = .shared) {
-        self.session = session
+    init(networkService: NetworkServiceProtocol = NetworkService()) {
+        self.networkService = networkService
     }
     
-    // MARK: - Public Methods
-    func fetchCurrentWeather(for city: String) -> AnyPublisher<WeatherResponse, WeatherError> {
-        guard let url = buildURL(endpoint: "current.json", city: city) else {
-            return Fail(error: WeatherError.invalidURL)
-                .eraseToAnyPublisher()
-        }
+    // MARK: - Async/Await methods
+    func fetchCurrentWeather(for city: String) async throws -> WeatherResponse {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/current.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": city,
+                "aqi": "yes"
+            ]
+        )
         
-        return performRequest(url: url)
+        return try await networkService.request(request, responseType: WeatherResponse.self)
     }
     
-    func fetchForecast(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, WeatherError> {
-        guard let url = buildURL(endpoint: "forecast.json", city: city, days: days) else {
-            return Fail(error: WeatherError.invalidURL)
-                .eraseToAnyPublisher()
-        }
+    func fetchForecast(for city: String, days: Int = 3) async throws -> WeatherResponse {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/forecast.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": city,
+                "aqi": "yes",
+                "days": days
+            ]
+        )
         
-        return performRequest(url: url)
+        return try await networkService.request(request, responseType: WeatherResponse.self)
     }
     
-    func searchCities(query: String) -> AnyPublisher<[Location], WeatherError> {
-        guard let url = buildSearchURL(query: query) else {
-            return Fail(error: WeatherError.invalidURL)
-                .eraseToAnyPublisher()
-        }
+    func searchCities(query: String) async throws -> [Location] {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/search.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": query
+            ]
+        )
         
-        return session.dataTaskPublisher(for: url)
-            .tryMap { data, response -> Data in
-                try self.validateResponse(data: data, response: response)
-                return data
-            }
-            .decode(type: [Location].self, decoder: JSONDecoder())
-            .mapError { error in
-                self.mapError(error)
-            }
-            .eraseToAnyPublisher()
+        return try await networkService.request(request, responseType: [Location].self)
     }
     
-    // MARK: - Private Methods
-    private func buildURL(endpoint: String, city: String, days: Int? = nil) -> URL? {
-        var components = URLComponents(string: "\(baseURL)/\(endpoint)")
+    // MARK: - Combine methods
+    func fetchCurrentWeatherPublisher(for city: String) -> AnyPublisher<WeatherResponse, NetworkError> {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/current.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": city,
+                "aqi": "yes"
+            ]
+        )
         
-        var queryItems = [
-            URLQueryItem(name: "key", value: apiKey),
-            URLQueryItem(name: "q", value: city),
-            URLQueryItem(name: "aqi", value: "yes")
-        ]
-        
-        if let days = days {
-            queryItems.append(URLQueryItem(name: "days", value: "\(days)"))
-        }
-        
-        components?.queryItems = queryItems
-        return components?.url
+        return networkService.requestPublisher(request, responseType: WeatherResponse.self)
     }
     
-    private func buildSearchURL(query: String) -> URL? {
-        var components = URLComponents(string: "\(baseURL)/search.json")
-        components?.queryItems = [
-            URLQueryItem(name: "key", value: apiKey),
-            URLQueryItem(name: "q", value: query)
-        ]
-        return components?.url
-    }
-    
-    private func performRequest(url: URL) -> AnyPublisher<WeatherResponse, WeatherError> {
-        return session.dataTaskPublisher(for: url)
-            .tryMap { data, response -> Data in
-                try self.validateResponse(data: data, response: response)
-                return data
-            }
-            .decode(type: WeatherResponse.self, decoder: JSONDecoder())
-            .mapError { error in
-                self.mapError(error)
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    private func validateResponse(data: Data, response: URLResponse) throws -> Data {
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WeatherError.networkError(URLError(.badServerResponse))
-        }
+    func fetchForecastPublisher(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, NetworkError> {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/forecast.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": city,
+                "aqi": "yes",
+                "days": days
+            ]
+        )
         
-        guard 200...299 ~= httpResponse.statusCode else {
-            // Try to decode error response
-            if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let error = errorData["error"] as? [String: Any],
-               let message = error["message"] as? String {
-                throw WeatherError.apiError(message)
-            }
-            throw WeatherError.apiError("HTTP \(httpResponse.statusCode)")
-        }
-        
-        return data
+        return networkService.requestPublisher(request, responseType: WeatherResponse.self)
     }
     
-    private func mapError(_ error: Error) -> WeatherError {
-        if let weatherError = error as? WeatherError {
-            return weatherError
-        } else if error is DecodingError {
-            return .decodingError
-        } else {
-            return .networkError(error)
-        }
+    func searchCitiesPublisher(query: String) -> AnyPublisher<[Location], NetworkError> {
+        let request = APIRequest(
+            baseURL: baseURL,
+            path: "/search.json",
+            method: .GET,
+            parameters: [
+                "key": apiKey,
+                "q": query
+            ]
+        )
+        
+        return networkService.requestPublisher(request, responseType: [Location].self)
     }
 }

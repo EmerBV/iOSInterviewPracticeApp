@@ -14,7 +14,10 @@ struct WeatherResponse: Codable {
     let forecast: Forecast
 }
 
-struct Location: Codable {
+struct Location: Codable, Identifiable {
+    var id: String {
+        return "\(lat)-\(lon)-\(name)"
+    }
     let name: String
     let region: String
     let country: String
