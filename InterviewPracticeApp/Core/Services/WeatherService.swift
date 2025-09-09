@@ -139,7 +139,7 @@ import Combine
  }
  */
 
-final class WeatherService {
+class WeatherService {
     private let networkService: NetworkServiceProtocol
     private let baseURL = "http://api.weatherapi.com/v1"
     private let apiKey = "81e77507295a4002b39133154250809"
@@ -150,6 +150,8 @@ final class WeatherService {
     
     // MARK: - Async/Await methods
     func fetchCurrentWeather(for city: String) async throws -> WeatherResponse {
+        print("🌤️ Fetching current weather for: \(city)")
+        
         let request = APIRequest(
             baseURL: baseURL,
             path: "/current.json",
@@ -161,19 +163,29 @@ final class WeatherService {
             ]
         )
         
+        print("🔗 Request URL will be: \(baseURL)/current.json?key=\(apiKey)&q=\(city)&aqi=yes")
+        
         do {
             let currentResponse = try await networkService.request(request, responseType: CurrentWeatherResponse.self)
+            print("✅ Successfully decoded current weather response")
+            
             return WeatherResponse(
                 location: currentResponse.location,
                 current: currentResponse.current,
                 forecast: nil
             )
         } catch let networkError as NetworkError {
+            print("❌ Network error: \(networkError)")
             throw mapNetworkError(networkError)
+        } catch {
+            print("❌ Unknown error: \(error)")
+            throw WeatherError.networkError(error)
         }
     }
     
     func fetchForecast(for city: String, days: Int = 3) async throws -> WeatherResponse {
+        print("🌤️ Fetching forecast for: \(city), days: \(days)")
+        
         let request = APIRequest(
             baseURL: baseURL,
             path: "/forecast.json",
@@ -186,14 +198,24 @@ final class WeatherService {
             ]
         )
         
+        print("🔗 Request URL will be: \(baseURL)/forecast.json?key=\(apiKey)&q=\(city)&aqi=yes&days=\(days)")
+        
         do {
-            return try await networkService.request(request, responseType: WeatherResponse.self)
+            let response = try await networkService.request(request, responseType: WeatherResponse.self)
+            print("✅ Successfully decoded forecast response")
+            return response
         } catch let networkError as NetworkError {
+            print("❌ Network error: \(networkError)")
             throw mapNetworkError(networkError)
+        } catch {
+            print("❌ Unknown error: \(error)")
+            throw WeatherError.networkError(error)
         }
     }
     
     func searchCities(query: String) async throws -> [Location] {
+        print("🔍 Searching cities for: \(query)")
+        
         let request = APIRequest(
             baseURL: baseURL,
             path: "/search.json",
@@ -205,13 +227,19 @@ final class WeatherService {
         )
         
         do {
-            return try await networkService.request(request, responseType: [Location].self)
+            let locations = try await networkService.request(request, responseType: [Location].self)
+            print("✅ Found \(locations.count) cities")
+            return locations
         } catch let networkError as NetworkError {
+            print("❌ Search error: \(networkError)")
             throw mapNetworkError(networkError)
+        } catch {
+            print("❌ Unknown search error: \(error)")
+            throw WeatherError.networkError(error)
         }
     }
     
-    // MARK: - Combine methods
+    // MARK: - Combine methods para UIKit
     func fetchCurrentWeatherPublisher(for city: String) -> AnyPublisher<WeatherResponse, WeatherError> {
         let request = APIRequest(
             baseURL: baseURL,

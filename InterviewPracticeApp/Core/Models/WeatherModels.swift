@@ -31,9 +31,9 @@ struct Location: Codable, Identifiable {
     let country: String
     let lat: Double
     let lon: Double
-    let tzId: String
-    let localtimeEpoch: Int
-    let localtime: String
+    let tzId: String?              // ❌ OPCIONAL
+    let localtimeEpoch: Int?       // ❌ OPCIONAL
+    let localtime: String?         // ❌ OPCIONAL
     
     var id: String {
         return "\(lat)-\(lon)-\(name)"
@@ -48,29 +48,29 @@ struct Location: Codable, Identifiable {
 }
 
 struct CurrentWeather: Codable {
-    let lastUpdatedEpoch: Int
-    let lastUpdated: String
-    let tempC: Double
-    let tempF: Double
-    let isDay: Int
+    let lastUpdatedEpoch: Int?      // ❌ OPCIONAL
+    let lastUpdated: String?        // ❌ OPCIONAL
+    let tempC: Double?              // ❌ OPCIONAL
+    let tempF: Double?              // ❌ OPCIONAL
+    let isDay: Int?                 // ❌ OPCIONAL
     let condition: WeatherCondition
-    let windMph: Double
-    let windKph: Double
-    let windDegree: Int
-    let windDir: String
-    let pressureMb: Double
-    let pressureIn: Double
-    let precipMm: Double
-    let precipIn: Double
-    let humidity: Int
-    let cloud: Int
-    let feelslikeC: Double
-    let feelslikeF: Double
-    let visKm: Double
-    let visMiles: Double
-    let uv: Double
-    let gustMph: Double
-    let gustKph: Double
+    let windMph: Double?            // ❌ OPCIONAL
+    let windKph: Double?            // ❌ OPCIONAL
+    let windDegree: Int?            // ❌ OPCIONAL
+    let windDir: String?            // ❌ OPCIONAL
+    let pressureMb: Double?         // ❌ OPCIONAL
+    let pressureIn: Double?         // ❌ OPCIONAL
+    let precipMm: Double?           // ❌ OPCIONAL
+    let precipIn: Double?           // ❌ OPCIONAL
+    let humidity: Int?              // ❌ OPCIONAL
+    let cloud: Int?                 // ❌ OPCIONAL
+    let feelslikeC: Double?         // ❌ OPCIONAL
+    let feelslikeF: Double?         // ❌ OPCIONAL
+    let visKm: Double?              // ❌ OPCIONAL
+    let visMiles: Double?           // ❌ OPCIONAL
+    let uv: Double?                 // ❌ OPCIONAL
+    let gustMph: Double?            // ❌ OPCIONAL
+    let gustKph: Double?            // ❌ OPCIONAL
     
     enum CodingKeys: String, CodingKey {
         case lastUpdatedEpoch = "last_updated_epoch"
@@ -110,10 +110,10 @@ struct Forecast: Codable {
 
 struct ForecastDay: Codable, Identifiable {
     let date: String
-    let dateEpoch: Int
+    let dateEpoch: Int?             // ❌ OPCIONAL
     let day: DayWeather
-    let astro: Astro
-    let hour: [HourWeather]
+    let astro: Astro?               // ❌ OPCIONAL
+    let hour: [HourWeather]?        // ❌ OPCIONAL
     
     var id: String { date }
     
@@ -125,26 +125,26 @@ struct ForecastDay: Codable, Identifiable {
 }
 
 struct DayWeather: Codable {
-    let maxtempC: Double
-    let maxtempF: Double
-    let mintempC: Double
-    let mintempF: Double
-    let avgtempC: Double
-    let avgtempF: Double
-    let maxwindMph: Double
-    let maxwindKph: Double
-    let totalprecipMm: Double
-    let totalprecipIn: Double
-    let totalsnowCm: Double
-    let avgvisKm: Double
-    let avgvisMiles: Double
-    let avghumidity: Double
-    let dailyWillItRain: Int
-    let dailyChanceOfRain: Int
-    let dailyWillItSnow: Int
-    let dailyChanceOfSnow: Int
+    let maxtempC: Double?           // ❌ OPCIONAL
+    let maxtempF: Double?           // ❌ OPCIONAL
+    let mintempC: Double?           // ❌ OPCIONAL
+    let mintempF: Double?           // ❌ OPCIONAL
+    let avgtempC: Double?           // ❌ OPCIONAL
+    let avgtempF: Double?           // ❌ OPCIONAL
+    let maxwindMph: Double?         // ❌ OPCIONAL
+    let maxwindKph: Double?         // ❌ OPCIONAL
+    let totalprecipMm: Double?      // ❌ OPCIONAL
+    let totalprecipIn: Double?      // ❌ OPCIONAL
+    let totalsnowCm: Double?        // ❌ OPCIONAL
+    let avgvisKm: Double?           // ❌ OPCIONAL
+    let avgvisMiles: Double?        // ❌ OPCIONAL
+    let avghumidity: Double?        // ❌ OPCIONAL
+    let dailyWillItRain: Int?       // ❌ OPCIONAL
+    let dailyChanceOfRain: Int?     // ❌ OPCIONAL
+    let dailyWillItSnow: Int?       // ❌ OPCIONAL
+    let dailyChanceOfSnow: Int?     // ❌ OPCIONAL
     let condition: WeatherCondition
-    let uv: Double
+    let uv: Double?                 // ❌ OPCIONAL
     
     enum CodingKeys: String, CodingKey {
         case maxtempC = "maxtemp_c"
@@ -170,14 +170,14 @@ struct DayWeather: Codable {
 }
 
 struct Astro: Codable {
-    let sunrise: String
-    let sunset: String
-    let moonrise: String
-    let moonset: String
-    let moonPhase: String
-    let moonIllumination: String
-    let isMoonUp: Int
-    let isSunUp: Int
+    let sunrise: String?
+    let sunset: String?
+    let moonrise: String?
+    let moonset: String?
+    let moonPhase: String?
+    let moonIllumination: String?
+    let isMoonUp: Int?
+    let isSunUp: Int?
     
     enum CodingKeys: String, CodingKey {
         case sunrise, sunset, moonrise, moonset
@@ -189,39 +189,39 @@ struct Astro: Codable {
 }
 
 struct HourWeather: Codable, Identifiable {
-    let timeEpoch: Int
+    let timeEpoch: Int?
     let time: String
-    let tempC: Double
-    let tempF: Double
-    let isDay: Int
+    let tempC: Double?
+    let tempF: Double?
+    let isDay: Int?
     let condition: WeatherCondition
-    let windMph: Double
-    let windKph: Double
-    let windDegree: Int
-    let windDir: String
-    let pressureMb: Double
-    let pressureIn: Double
-    let precipMm: Double
-    let precipIn: Double
-    let humidity: Int
-    let cloud: Int
-    let feelslikeC: Double
-    let feelslikeF: Double
-    let windchillC: Double
-    let windchillF: Double
-    let heatindexC: Double
-    let heatindexF: Double
-    let dewpointC: Double
-    let dewpointF: Double
-    let willItRain: Int
-    let chanceOfRain: Int
-    let willItSnow: Int
-    let chanceOfSnow: Int
-    let visKm: Double
-    let visMiles: Double
-    let gustMph: Double
-    let gustKph: Double
-    let uv: Double
+    let windMph: Double?
+    let windKph: Double?
+    let windDegree: Int?
+    let windDir: String?
+    let pressureMb: Double?
+    let pressureIn: Double?
+    let precipMm: Double?
+    let precipIn: Double?
+    let humidity: Int?
+    let cloud: Int?
+    let feelslikeC: Double?
+    let feelslikeF: Double?
+    let windchillC: Double?
+    let windchillF: Double?
+    let heatindexC: Double?
+    let heatindexF: Double?
+    let dewpointC: Double?
+    let dewpointF: Double?
+    let willItRain: Int?
+    let chanceOfRain: Int?
+    let willItSnow: Int?
+    let chanceOfSnow: Int?
+    let visKm: Double?
+    let visMiles: Double?
+    let gustMph: Double?
+    let gustKph: Double?
+    let uv: Double?
     
     var id: String { time }
     

@@ -1081,6 +1081,7 @@ final class WeatherVC: BaseViewController {
     }
     
     // MARK: - Actions
+    /*
     @objc private func refreshWeather() {
         Task {
             await viewModel.refreshWeather()
@@ -1093,6 +1094,17 @@ final class WeatherVC: BaseViewController {
         Task {
             await viewModel.searchCities(query: query)
         }
+    }
+     */
+    
+    // En WeatherVC, usar solo Combine methods:
+    @objc private func refreshWeather() {
+        viewModel.fetchForecastWithCombine(for: viewModel.selectedCity)
+    }
+
+    @objc private func searchTextChanged() {
+        guard let query = searchTextField.text else { return }
+        viewModel.searchCitiesWithCombine(query: query)
     }
     
     @objc private func dismissKeyboard() {
@@ -1120,7 +1132,7 @@ final class WeatherVC: BaseViewController {
         
         // Update basic weather info
         locationLabel.text = "\(weather.location.name), \(weather.location.country)"
-        temperatureLabel.text = "\(Int(weather.current.tempC))°C"
+        temperatureLabel.text = "\(Int(weather.current.tempC ?? 0))°C"
         conditionLabel.text = weather.current.condition.text
         
         // Update weather icon
@@ -1128,9 +1140,9 @@ final class WeatherVC: BaseViewController {
         weatherIconImageView.image = UIImage(systemName: iconName)
         
         // Update details
-        updateDetailValue(title: "Sensación térmica", value: "\(Int(weather.current.feelslikeC))°C")
-        updateDetailValue(title: "Viento", value: "\(Int(weather.current.windKph)) km/h")
-        updateDetailValue(title: "Humedad", value: "\(weather.current.humidity)%")
+        updateDetailValue(title: "Sensación térmica", value: "\(Int(weather.current.feelslikeC ?? 0)) °C")
+        updateDetailValue(title: "Viento", value: "\(Int(weather.current.windKph ?? 0)) km/h")
+        updateDetailValue(title: "Humedad", value: "\(Int(weather.current.humidity ?? 0)) %")
         
         // Update forecast
         updateForecast(weather.forecastDays)
@@ -1279,7 +1291,7 @@ final class WeatherVC: BaseViewController {
     }
     
     private func temperatureRange(for day: ForecastDay) -> String {
-        return "\(Int(day.day.maxtempC))° / \(Int(day.day.mintempC))°"
+        return "\(Int(day.day.maxtempC ?? 0))° / \(Int(day.day.mintempC ?? 0))°"
     }
 }
 
@@ -1317,6 +1329,7 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
         return cell
     }
     
+    /*
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -1334,6 +1347,25 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
         Task {
             await viewModel.selectCity(location.name)
         }
+    }
+     */
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        
+        let location = viewModel.citySuggestions[indexPath.row]
+        searchTextField.text = location.name
+        searchTextField.resignFirstResponder()
+        
+        // Hide suggestions
+        suggestionsHeightConstraint.constant = 0
+        UIView.animate(withDuration: 0.3) {
+            self.view.layoutIfNeeded()
+        }
+        
+        // Fetch weather for selected city using Combine
+        viewModel.selectedCity = location.name
+        viewModel.fetchForecastWithCombine(for: location.name)
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {

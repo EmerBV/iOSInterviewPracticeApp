@@ -58,6 +58,12 @@ final class NetworkService: NetworkServiceProtocol {
         do {
             let (data, response) = try await session.data(for: urlRequest)
             
+            // 🐛 DEBUG: Imprimir respuesta RAW
+            print("📄 Raw API Response:")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print(jsonString)
+            }
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.networkError(URLError(.badServerResponse))
             }

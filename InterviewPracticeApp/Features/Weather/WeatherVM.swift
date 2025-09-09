@@ -289,66 +289,93 @@ final class WeatherVM: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     private var searchCancellable: AnyCancellable?
     
-    // MARK: - Initialization
+    // MARK: - Initialization (SIN @MainActor)
     init(weatherService: WeatherService = WeatherService()) {
         self.weatherService = weatherService
-        Task {
-            await fetchForecast(for: selectedCity)
-        }
+        print("🏗️ WeatherVM initialized")
+        
+        // Usar Combine para inicialización (mejor para UIKit)
+        fetchForecastWithCombine(for: selectedCity)
     }
     
-    // MARK: - Async/Await Methods
+    // MARK: - Async/Await Methods (con dispatch al main queue)
     func fetchWeather(for city: String) async {
-        isLoading = true
-        errorMessage = nil
-        selectedCity = city
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+            selectedCity = city
+        }
         
         do {
             let weather = try await weatherService.fetchCurrentWeather(for: city)
-            currentWeather = weather
+            await MainActor.run {
+                currentWeather = weather
+                isLoading = false
+            }
         } catch let weatherError as WeatherError {
-            errorMessage = weatherError.localizedDescription
+            await MainActor.run {
+                errorMessage = weatherError.localizedDescription
+                isLoading = false
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
         }
-        
-        isLoading = false
     }
     
     func fetchForecast(for city: String, days: Int = 3) async {
-        isLoading = true
-        errorMessage = nil
-        selectedCity = city
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+            selectedCity = city
+        }
         
         do {
             let weather = try await weatherService.fetchForecast(for: city, days: days)
-            currentWeather = weather
+            await MainActor.run {
+                currentWeather = weather
+                isLoading = false
+            }
         } catch let weatherError as WeatherError {
-            errorMessage = weatherError.localizedDescription
+            await MainActor.run {
+                errorMessage = weatherError.localizedDescription
+                isLoading = false
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
         }
-        
-        isLoading = false
     }
     
     func searchCities(query: String) async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            citySuggestions = []
+            await MainActor.run {
+                citySuggestions = []
+            }
             return
         }
         
         do {
             let cities = try await weatherService.searchCities(query: query)
-            citySuggestions = cities
+            await MainActor.run {
+                citySuggestions = cities
+            }
         } catch {
-            citySuggestions = []
+            await MainActor.run {
+                citySuggestions = []
+            }
         }
     }
     
     func selectCity(_ city: String) async {
-        selectedCity = city
-        citySuggestions = []
+        await MainActor.run {
+            selectedCity = city
+            citySuggestions = []
+        }
         await fetchForecast(for: city)
     }
     
@@ -357,7 +384,7 @@ final class WeatherVM: ObservableObject {
     }
 }
 
-// MARK: - WeatherVM Extension para UIKit (Combine)
+// MARK: - WeatherVM Extension para UIKit (Combine PREFERIDO)
 extension WeatherVM {
     
     // MARK: - Combine Publishers para UIKit
@@ -367,7 +394,7 @@ extension WeatherVM {
     var selectedCityPublisher: Published<String>.Publisher { $selectedCity }
     var errorPublisher: Published<String?>.Publisher { $errorMessage }
     
-    // MARK: - Combine Methods para UIKit
+    // MARK: - Combine Methods para UIKit (RECOMENDADOS)
     func fetchWeatherWithCombine(for city: String) {
         isLoading = true
         errorMessage = nil
@@ -384,12 +411,14 @@ extension WeatherVM {
                 },
                 receiveValue: { [weak self] weather in
                     self?.currentWeather = weather
+                    self?.printWeatherData() // 🐛 DEBUG: Ver datos completos
                 }
             )
             .store(in: &cancellables)
     }
     
     func fetchForecastWithCombine(for city: String, days: Int = 3) {
+        print("🔄 Starting forecast fetch with Combine for: \(city)")
         isLoading = true
         errorMessage = nil
         selectedCity = city
@@ -398,13 +427,17 @@ extension WeatherVM {
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
+                    print("🏁 Forecast fetch completed")
                     self?.isLoading = false
                     if case .failure(let error) = completion {
+                        print("❌ Forecast error: \(error)")
                         self?.errorMessage = error.localizedDescription
                     }
                 },
                 receiveValue: { [weak self] weather in
+                    print("✅ Forecast success - has forecast: \(weather.hasForecast)")
                     self?.currentWeather = weather
+                    self?.printWeatherData() // 🐛 DEBUG: Ver datos completos
                 }
             )
             .store(in: &cancellables)
@@ -442,8 +475,9 @@ extension WeatherVM {
     }
     
     var currentTemperature: String {
-        guard let weather = currentWeather else { return "--°" }
-        return "\(Int(weather.current.tempC))°C"
+        guard let weather = currentWeather,
+              let tempC = weather.current.tempC else { return "--°" }
+        return "\(Int(tempC))°C"
     }
     
     var currentCondition: String {
@@ -461,18 +495,48 @@ extension WeatherVM {
     }
     
     var currentWindSpeed: String {
-        guard let weather = currentWeather else { return "--" }
-        return "\(Int(weather.current.windKph)) km/h"
+        guard let weather = currentWeather,
+              let windKph = weather.current.windKph else { return "--" }
+        return "\(Int(windKph)) km/h"
     }
     
     var currentHumidity: String {
-        guard let weather = currentWeather else { return "--%" }
-        return "\(weather.current.humidity)%"
+        guard let weather = currentWeather,
+              let humidity = weather.current.humidity else { return "--%" }
+        return "\(humidity)%"
     }
     
     var currentFeelsLike: String {
-        guard let weather = currentWeather else { return "--°" }
-        return "\(Int(weather.current.feelslikeC))°C"
+        guard let weather = currentWeather,
+              let feelslikeC = weather.current.feelslikeC else { return "--°" }
+        return "\(Int(feelslikeC))°C"
+    }
+    
+    var currentPressure: String {
+        guard let weather = currentWeather,
+              let pressureMb = weather.current.pressureMb else { return "--" }
+        return "\(Int(pressureMb)) mb"
+    }
+    
+    var currentUV: String {
+        guard let weather = currentWeather,
+              let uv = weather.current.uv else { return "--" }
+        return "\(Int(uv))"
+    }
+    
+    var currentVisibility: String {
+        guard let weather = currentWeather,
+              let visKm = weather.current.visKm else { return "--" }
+        return "\(Int(visKm)) km"
+    }
+    
+    var currentGust: String {
+        guard let weather = currentWeather else { return "--" }
+        
+        if let gustKph = weather.current.gustKph, gustKph > 0 {
+            return "\(Int(gustKph)) km/h"
+        }
+        return "Sin ráfagas"
     }
     
     // MARK: - Helper Methods
@@ -503,6 +567,36 @@ extension WeatherVM {
     }
     
     func temperatureRange(for day: ForecastDay) -> String {
-        return "\(Int(day.day.maxtempC))° / \(Int(day.day.mintempC))°"
+        let maxTemp = day.day.maxtempC ?? 0
+        let minTemp = day.day.mintempC ?? 0
+        return "\(Int(maxTemp))° / \(Int(minTemp))°"
+    }
+    
+    // MARK: - Debug Helper
+    func printWeatherData() {
+        guard let weather = currentWeather else {
+            print("🚫 No weather data available")
+            return
+        }
+        
+        print("🌤️ Weather Data Debug:")
+        print("📍 Location: \(weather.location.name), \(weather.location.country)")
+        print("🌡️ Temperature: \(weather.current.tempC ?? 0)°C")
+        print("☁️ Condition: \(weather.current.condition.text)")
+        print("💨 Wind: \(weather.current.windKph ?? 0) km/h")
+        print("💧 Humidity: \(weather.current.humidity ?? 0)%")
+        print("📊 Pressure: \(weather.current.pressureMb ?? 0) mb")
+        print("☀️ UV: \(weather.current.uv ?? 0)")
+        print("🔮 Has Forecast: \(weather.hasForecast)")
+        print("📅 Forecast Days: \(weather.forecastDays.count)")
+        
+        if weather.hasForecast {
+            print("🗓️ Forecast Details:")
+            for (index, day) in weather.forecastDays.enumerated() {
+                let maxTemp = day.day.maxtempC ?? 0
+                let minTemp = day.day.mintempC ?? 0
+                print("  Day \(index + 1): \(day.date) - \(day.day.condition.text) - \(Int(maxTemp))°/\(Int(minTemp))°")
+            }
+        }
     }
 }
