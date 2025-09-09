@@ -721,6 +721,7 @@ final class WeatherVC: BaseViewController {
     }()
     
     private lazy var suggestionsTableView: UITableView = {
+        /*
         let tableView = UITableView()
         tableView.delegate = self
         tableView.dataSource = self
@@ -734,6 +735,23 @@ final class WeatherVC: BaseViewController {
         tableView.isScrollEnabled = false
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CityCell")
+        return tableView
+         */
+        
+        let tableView = UITableView()
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(CityTableViewCell.self, forCellReuseIdentifier: CityTableViewCell.identifier)
+        tableView.backgroundColor = .systemBackground
+        tableView.layer.cornerRadius = 12
+        tableView.layer.shadowColor = UIColor.black.cgColor
+        tableView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        tableView.layer.shadowRadius = 4
+        tableView.layer.shadowOpacity = 0.1
+        tableView.separatorStyle = .singleLine
+        tableView.isScrollEnabled = false
+        tableView.layer.masksToBounds = true
+        tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
     
@@ -1082,26 +1100,27 @@ final class WeatherVC: BaseViewController {
     
     // MARK: - Actions
     /*
-    @objc private func refreshWeather() {
-        Task {
-            await viewModel.refreshWeather()
-        }
-    }
-    
-    @objc private func searchTextChanged() {
-        guard let query = searchTextField.text else { return }
-        
-        Task {
-            await viewModel.searchCities(query: query)
-        }
-    }
+     @objc private func refreshWeather() {
+     Task {
+     await viewModel.refreshWeather()
+     }
+     }
+     
+     @objc private func searchTextChanged() {
+     guard let query = searchTextField.text else { return }
+     
+     Task {
+     await viewModel.searchCities(query: query)
+     }
+     }
      */
     
     // En WeatherVC, usar solo Combine methods:
     @objc private func refreshWeather() {
         viewModel.fetchForecastWithCombine(for: viewModel.selectedCity)
+        Utils.hapticFeedback(.light)
     }
-
+    
     @objc private func searchTextChanged() {
         guard let query = searchTextField.text else { return }
         viewModel.searchCitiesWithCombine(query: query)
@@ -1142,7 +1161,7 @@ final class WeatherVC: BaseViewController {
         // Update details
         updateDetailValue(title: "Sensación térmica", value: "\(Int(weather.current.feelslikeC ?? 0)) °C")
         updateDetailValue(title: "Viento", value: "\(Int(weather.current.windKph ?? 0)) km/h")
-        updateDetailValue(title: "Humedad", value: "\(Int(weather.current.humidity ?? 0)) %")
+        updateDetailValue(title: "Humedad", value: "\(Int(weather.current.humidity)) %")
         
         // Update forecast
         updateForecast(weather.forecastDays)
@@ -1319,35 +1338,43 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CityCell", for: indexPath)
+        //let cell = tableView.dequeueReusableCell(withIdentifier: "CityCell", for: indexPath)
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: CityTableViewCell.identifier, for: indexPath) as? CityTableViewCell else {
+            return UITableViewCell()
+        }
+        
         let location = viewModel.citySuggestions[indexPath.row]
         
+        /*
         cell.textLabel?.text = "\(location.name), \(location.country)"
         cell.detailTextLabel?.text = location.region
+         */
+        
+        cell.configure(with: location)
         cell.accessoryType = .disclosureIndicator
         
         return cell
     }
     
     /*
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        
-        let location = viewModel.citySuggestions[indexPath.row]
-        searchTextField.text = location.name
-        searchTextField.resignFirstResponder()
-        
-        // Hide suggestions
-        suggestionsHeightConstraint.constant = 0
-        UIView.animate(withDuration: 0.3) {
-            self.view.layoutIfNeeded()
-        }
-        
-        // Fetch weather for selected city
-        Task {
-            await viewModel.selectCity(location.name)
-        }
-    }
+     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+     tableView.deselectRow(at: indexPath, animated: true)
+     
+     let location = viewModel.citySuggestions[indexPath.row]
+     searchTextField.text = location.name
+     searchTextField.resignFirstResponder()
+     
+     // Hide suggestions
+     suggestionsHeightConstraint.constant = 0
+     UIView.animate(withDuration: 0.3) {
+     self.view.layoutIfNeeded()
+     }
+     
+     // Fetch weather for selected city
+     Task {
+     await viewModel.selectCity(location.name)
+     }
+     }
      */
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
