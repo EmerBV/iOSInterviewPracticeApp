@@ -1133,7 +1133,7 @@ final class WeatherVC: BaseViewController {
         updateDetailValue(title: "Humedad", value: "\(weather.current.humidity)%")
         
         // Update forecast
-        updateForecast(weather.forecast.forecastday)
+        updateForecast(weather.forecast?.forecastday ?? [])
     }
     
     private func updateSuggestions(_ suggestions: [Location]) {

@@ -144,7 +144,6 @@ class WeatherService {
     private let baseURL = "http://api.weatherapi.com/v1"
     
     // Nota: En una app real, esta clave debe estar en un archivo de configuración seguro
-    // o obtenerse del backend. Aquí usamos una clave de ejemplo.
     private let apiKey = "81e77507295a4002b39133154250809"
     
     init(networkService: NetworkServiceProtocol = NetworkService()) {
@@ -164,7 +163,19 @@ class WeatherService {
             ]
         )
         
-        return try await networkService.request(request, responseType: WeatherResponse.self)
+        do {
+            // El endpoint /current.json NO incluye forecast
+            let currentResponse = try await networkService.request(request, responseType: CurrentWeatherResponse.self)
+            
+            // Convertir a WeatherResponse sin forecast
+            return WeatherResponse(
+                location: currentResponse.location,
+                current: currentResponse.current,
+                forecast: nil
+            )
+        } catch let networkError as NetworkError {
+            throw mapNetworkError(networkError)
+        }
     }
     
     func fetchForecast(for city: String, days: Int = 3) async throws -> WeatherResponse {
@@ -180,7 +191,12 @@ class WeatherService {
             ]
         )
         
-        return try await networkService.request(request, responseType: WeatherResponse.self)
+        do {
+            // El endpoint /forecast.json SÍ incluye forecast
+            return try await networkService.request(request, responseType: WeatherResponse.self)
+        } catch let networkError as NetworkError {
+            throw mapNetworkError(networkError)
+        }
     }
     
     func searchCities(query: String) async throws -> [Location] {
@@ -194,11 +210,15 @@ class WeatherService {
             ]
         )
         
-        return try await networkService.request(request, responseType: [Location].self)
+        do {
+            return try await networkService.request(request, responseType: [Location].self)
+        } catch let networkError as NetworkError {
+            throw mapNetworkError(networkError)
+        }
     }
     
     // MARK: - Combine methods
-    func fetchCurrentWeatherPublisher(for city: String) -> AnyPublisher<WeatherResponse, NetworkError> {
+    func fetchCurrentWeatherPublisher(for city: String) -> AnyPublisher<WeatherResponse, WeatherError> {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/current.json",
@@ -210,10 +230,19 @@ class WeatherService {
             ]
         )
         
-        return networkService.requestPublisher(request, responseType: WeatherResponse.self)
+        return networkService.requestPublisher(request, responseType: CurrentWeatherResponse.self)
+            .map { currentResponse in
+                WeatherResponse(
+                    location: currentResponse.location,
+                    current: currentResponse.current,
+                    forecast: nil
+                )
+            }
+            .mapError(mapNetworkError)
+            .eraseToAnyPublisher()
     }
     
-    func fetchForecastPublisher(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, NetworkError> {
+    func fetchForecastPublisher(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, WeatherError> {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/forecast.json",
@@ -227,9 +256,11 @@ class WeatherService {
         )
         
         return networkService.requestPublisher(request, responseType: WeatherResponse.self)
+            .mapError(mapNetworkError)
+            .eraseToAnyPublisher()
     }
     
-    func searchCitiesPublisher(query: String) -> AnyPublisher<[Location], NetworkError> {
+    func searchCitiesPublisher(query: String) -> AnyPublisher<[Location], WeatherError> {
         let request = APIRequest(
             baseURL: baseURL,
             path: "/search.json",
@@ -241,5 +272,50 @@ class WeatherService {
         )
         
         return networkService.requestPublisher(request, responseType: [Location].self)
+            .mapError(mapNetworkError)
+            .eraseToAnyPublisher()
     }
+    
+    // MARK: - Helper Methods
+    private func mapNetworkError(_ networkError: NetworkError) -> WeatherError {
+        switch networkError {
+        case .invalidURL:
+            return .invalidURL
+        case .noData:
+            return .noData
+        case .decodingError(let error):
+            return .decodingError(error)
+        case .networkError(let error):
+            return .networkError(error)
+        case .serverError(let code):
+            switch code {
+            case 401:
+                return .invalidAPIKey
+            case 400:
+                return .locationNotFound
+            case 429:
+                return .tooManyRequests
+            default:
+                return .apiError("Server error: \(code)")
+            }
+        case .unauthorized:
+            return .invalidAPIKey
+        case .forbidden:
+            return .invalidAPIKey
+        case .notFound:
+            return .locationNotFound
+        case .timeout:
+            return .networkError(URLError(.timedOut))
+        case .noInternetConnection:
+            return .networkError(URLError(.notConnectedToInternet))
+        }
+    }
+}
+
+// MARK: - Response Models Auxiliares
+
+// Modelo específico para /current.json (sin forecast)
+private struct CurrentWeatherResponse: Codable {
+    let location: Location
+    let current: CurrentWeather
 }

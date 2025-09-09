@@ -306,8 +306,8 @@ final class WeatherVM: ObservableObject {
         do {
             let weather = try await weatherService.fetchCurrentWeather(for: city)
             currentWeather = weather
-        } catch let networkError as NetworkError {
-            errorMessage = networkError.localizedDescription
+        } catch let weatherError as WeatherError {
+            errorMessage = weatherError.localizedDescription
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -323,8 +323,8 @@ final class WeatherVM: ObservableObject {
         do {
             let weather = try await weatherService.fetchForecast(for: city, days: days)
             currentWeather = weather
-        } catch let networkError as NetworkError {
-            errorMessage = networkError.localizedDescription
+        } catch let weatherError as WeatherError {
+            errorMessage = weatherError.localizedDescription
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -343,7 +343,7 @@ final class WeatherVM: ObservableObject {
             citySuggestions = cities
         } catch {
             citySuggestions = []
-            errorMessage = error.localizedDescription
+            // No mostrar error para búsqueda fallida
         }
     }
     
@@ -358,7 +358,7 @@ final class WeatherVM: ObservableObject {
     }
 }
 
-// MARK: - 3. WeatherVM Extension para UIKit (Combine)
+// MARK: - WeatherVM Extension para UIKit (Combine)
 
 extension WeatherVM {
     
@@ -426,8 +426,7 @@ extension WeatherVM {
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
-                    if case .failure(let error) = completion {
-                        self?.errorMessage = error.localizedDescription
+                    if case .failure = completion {
                         self?.citySuggestions = []
                     }
                 },
@@ -438,7 +437,7 @@ extension WeatherVM {
     }
 }
 
-// MARK: - 4. WeatherVM Helper Extensions
+// MARK: - WeatherVM Helper Extensions
 
 extension WeatherVM {
     
@@ -463,7 +462,7 @@ extension WeatherVM {
     }
     
     var forecastDays: [ForecastDay] {
-        return currentWeather?.forecast.forecastday ?? []
+        return currentWeather?.forecastDays ?? []
     }
     
     var currentWindSpeed: String {

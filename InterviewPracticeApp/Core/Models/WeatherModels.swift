@@ -7,17 +7,33 @@
 
 import Foundation
 
-// MARK: - Weather Response Models
+// Modelo base para current weather (sin forecast)
 struct WeatherResponse: Codable {
     let location: Location
     let current: CurrentWeather
+    let forecast: Forecast?  // OPCIONAL - solo viene en forecast API
+    
+    // Initializer para current weather sin forecast
+    init(location: Location, current: CurrentWeather, forecast: Forecast? = nil) {
+        self.location = location
+        self.current = current
+        self.forecast = forecast
+    }
+}
+
+// Modelo específico para forecast API
+struct ForecastResponse: Codable {
+    let location: Location
+    let current: CurrentWeather
     let forecast: Forecast
+    
+    // Convertir a WeatherResponse
+    var asWeatherResponse: WeatherResponse {
+        WeatherResponse(location: location, current: current, forecast: forecast)
+    }
 }
 
 struct Location: Codable, Identifiable {
-    var id: String {
-        return "\(lat)-\(lon)-\(name)"
-    }
     let name: String
     let region: String
     let country: String
@@ -26,6 +42,10 @@ struct Location: Codable, Identifiable {
     let tzId: String
     let localtimeEpoch: Int
     let localtime: String
+    
+    var id: String {
+        return "\(lat)-\(lon)-\(name)"
+    }
     
     enum CodingKeys: String, CodingKey {
         case name, region, country, lat, lon
@@ -249,13 +269,38 @@ struct HourWeather: Codable, Identifiable {
     }
 }
 
-// MARK: - Weather Error
-enum WeatherError: Error, LocalizedError {
+// MARK: - Extensions para mejor manejo
+extension WeatherResponse {
+    // Helper para obtener forecast days de forma segura
+    var forecastDays: [ForecastDay] {
+        return forecast?.forecastday ?? []
+    }
+    
+    // Helper para verificar si tiene forecast
+    var hasForecast: Bool {
+        return forecast != nil && !forecastDays.isEmpty
+    }
+    
+    // Helper para crear respuesta con forecast vacío
+    static func withoutForecast(location: Location, current: CurrentWeather) -> WeatherResponse {
+        return WeatherResponse(
+            location: location,
+            current: current,
+            forecast: Forecast(forecastday: [])
+        )
+    }
+}
+
+// MARK: - Error específico de WeatherAPI
+enum WeatherError: LocalizedError {
     case invalidURL
     case noData
-    case decodingError
+    case decodingError(Error)
     case apiError(String)
     case networkError(Error)
+    case invalidAPIKey
+    case locationNotFound
+    case tooManyRequests
     
     var errorDescription: String? {
         switch self {
@@ -263,12 +308,18 @@ enum WeatherError: Error, LocalizedError {
             return "URL inválida"
         case .noData:
             return "No se recibieron datos"
-        case .decodingError:
-            return "Error al procesar los datos del clima"
+        case .decodingError(let error):
+            return "Error al procesar los datos: \(error.localizedDescription)"
         case .apiError(let message):
             return "Error de API: \(message)"
         case .networkError(let error):
             return "Error de conexión: \(error.localizedDescription)"
+        case .invalidAPIKey:
+            return "Clave de API inválida"
+        case .locationNotFound:
+            return "Ubicación no encontrada"
+        case .tooManyRequests:
+            return "Demasiadas peticiones. Intenta más tarde."
         }
     }
 }

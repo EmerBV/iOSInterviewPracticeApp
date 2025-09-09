@@ -52,8 +52,8 @@ extension NetworkError {
             return .invalidURL
         case .noData:
             return .noData
-        case .decodingError:
-            return .decodingError
+        case .decodingError(let error):
+            return .decodingError(error)
         case .networkError(let error):
             return .networkError(error)
         case .serverError(let code):
