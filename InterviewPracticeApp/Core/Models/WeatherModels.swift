@@ -7,13 +7,11 @@
 
 import Foundation
 
-// Modelo base para current weather (sin forecast)
 struct WeatherResponse: Codable {
     let location: Location
     let current: CurrentWeather
-    let forecast: Forecast?  // OPCIONAL - solo viene en forecast API
+    let forecast: Forecast?
     
-    // Initializer para current weather sin forecast
     init(location: Location, current: CurrentWeather, forecast: Forecast? = nil) {
         self.location = location
         self.current = current
@@ -21,16 +19,10 @@ struct WeatherResponse: Codable {
     }
 }
 
-// Modelo específico para forecast API
-struct ForecastResponse: Codable {
+// Modelo específico para current.json (no incluye forecast)
+struct CurrentWeatherResponse: Codable {
     let location: Location
     let current: CurrentWeather
-    let forecast: Forecast
-    
-    // Convertir a WeatherResponse
-    var asWeatherResponse: WeatherResponse {
-        WeatherResponse(location: location, current: current, forecast: forecast)
-    }
 }
 
 struct Location: Codable, Identifiable {
@@ -269,29 +261,18 @@ struct HourWeather: Codable, Identifiable {
     }
 }
 
-// MARK: - Extensions para mejor manejo
+// MARK: - Helper Extensions
 extension WeatherResponse {
-    // Helper para obtener forecast days de forma segura
     var forecastDays: [ForecastDay] {
         return forecast?.forecastday ?? []
     }
     
-    // Helper para verificar si tiene forecast
     var hasForecast: Bool {
         return forecast != nil && !forecastDays.isEmpty
     }
-    
-    // Helper para crear respuesta con forecast vacío
-    static func withoutForecast(location: Location, current: CurrentWeather) -> WeatherResponse {
-        return WeatherResponse(
-            location: location,
-            current: current,
-            forecast: Forecast(forecastday: [])
-        )
-    }
 }
 
-// MARK: - Error específico de WeatherAPI
+// MARK: - Error Model
 enum WeatherError: LocalizedError {
     case invalidURL
     case noData

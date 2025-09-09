@@ -343,7 +343,6 @@ final class WeatherVM: ObservableObject {
             citySuggestions = cities
         } catch {
             citySuggestions = []
-            // No mostrar error para búsqueda fallida
         }
     }
     
@@ -359,7 +358,6 @@ final class WeatherVM: ObservableObject {
 }
 
 // MARK: - WeatherVM Extension para UIKit (Combine)
-
 extension WeatherVM {
     
     // MARK: - Combine Publishers para UIKit
@@ -413,7 +411,6 @@ extension WeatherVM {
     }
     
     func searchCitiesWithCombine(query: String) {
-        // Cancel previous search
         searchCancellable?.cancel()
         
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -438,10 +435,8 @@ extension WeatherVM {
 }
 
 // MARK: - WeatherVM Helper Extensions
-
 extension WeatherVM {
     
-    // MARK: - Convenience Properties
     var hasWeatherData: Bool {
         currentWeather != nil
     }
@@ -478,5 +473,36 @@ extension WeatherVM {
     var currentFeelsLike: String {
         guard let weather = currentWeather else { return "--°" }
         return "\(Int(weather.current.feelslikeC))°C"
+    }
+    
+    // MARK: - Helper Methods
+    func weatherIcon(for condition: WeatherCondition) -> String {
+        switch condition.code {
+        case 1000: return "sun.max.fill"
+        case 1003: return "cloud.sun.fill"
+        case 1006, 1009: return "cloud.fill"
+        case 1030, 1135, 1147: return "cloud.fog.fill"
+        case 1063, 1180, 1183, 1186, 1189, 1192, 1195, 1240, 1243, 1246: return "cloud.rain.fill"
+        case 1066, 1069, 1072, 1114, 1117, 1210, 1213, 1216, 1219, 1222, 1225, 1237, 1249, 1252, 1255, 1258, 1261, 1264: return "cloud.snow.fill"
+        case 1087, 1273, 1276, 1279, 1282: return "cloud.bolt.rain.fill"
+        default: return "cloud.fill"
+        }
+    }
+    
+    func formattedDate(from dateString: String) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        if let date = dateFormatter.date(from: dateString) {
+            dateFormatter.dateFormat = "EEEE"
+            dateFormatter.locale = Locale(identifier: "es_ES")
+            return dateFormatter.string(from: date).capitalized
+        }
+        
+        return dateString
+    }
+    
+    func temperatureRange(for day: ForecastDay) -> String {
+        return "\(Int(day.day.maxtempC))° / \(Int(day.day.mintempC))°"
     }
 }

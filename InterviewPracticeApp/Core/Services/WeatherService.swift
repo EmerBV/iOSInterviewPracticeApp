@@ -139,11 +139,9 @@ import Combine
  }
  */
 
-class WeatherService {
+final class WeatherService {
     private let networkService: NetworkServiceProtocol
     private let baseURL = "http://api.weatherapi.com/v1"
-    
-    // Nota: En una app real, esta clave debe estar en un archivo de configuración seguro
     private let apiKey = "81e77507295a4002b39133154250809"
     
     init(networkService: NetworkServiceProtocol = NetworkService()) {
@@ -164,10 +162,7 @@ class WeatherService {
         )
         
         do {
-            // El endpoint /current.json NO incluye forecast
             let currentResponse = try await networkService.request(request, responseType: CurrentWeatherResponse.self)
-            
-            // Convertir a WeatherResponse sin forecast
             return WeatherResponse(
                 location: currentResponse.location,
                 current: currentResponse.current,
@@ -192,7 +187,6 @@ class WeatherService {
         )
         
         do {
-            // El endpoint /forecast.json SÍ incluye forecast
             return try await networkService.request(request, responseType: WeatherResponse.self)
         } catch let networkError as NetworkError {
             throw mapNetworkError(networkError)
@@ -276,7 +270,7 @@ class WeatherService {
             .eraseToAnyPublisher()
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Error Mapping
     private func mapNetworkError(_ networkError: NetworkError) -> WeatherError {
         switch networkError {
         case .invalidURL:
@@ -310,12 +304,4 @@ class WeatherService {
             return .networkError(URLError(.notConnectedToInternet))
         }
     }
-}
-
-// MARK: - Response Models Auxiliares
-
-// Modelo específico para /current.json (sin forecast)
-private struct CurrentWeatherResponse: Codable {
-    let location: Location
-    let current: CurrentWeather
 }

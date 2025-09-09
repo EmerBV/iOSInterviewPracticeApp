@@ -1133,7 +1133,7 @@ final class WeatherVC: BaseViewController {
         updateDetailValue(title: "Humedad", value: "\(weather.current.humidity)%")
         
         // Update forecast
-        updateForecast(weather.forecast?.forecastday ?? [])
+        updateForecast(weather.forecastDays)
     }
     
     private func updateSuggestions(_ suggestions: [Location]) {
@@ -1229,6 +1229,18 @@ final class WeatherVC: BaseViewController {
         ])
         
         return containerView
+    }
+    
+    // MARK: - UI Reset Method
+    private func resetWeatherUI() {
+        locationLabel.text = "Ubicación no disponible"
+        temperatureLabel.text = "--°"
+        conditionLabel.text = "Sin datos"
+        weatherIconImageView.image = UIImage(systemName: "questionmark.circle")
+        updateDetailValue(title: "Sensación térmica", value: "--°")
+        updateDetailValue(title: "Viento", value: "--")
+        updateDetailValue(title: "Humedad", value: "--%")
+        updateForecast([])
     }
     
     // MARK: - Helper Methods
