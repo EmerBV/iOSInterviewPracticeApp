@@ -48,29 +48,29 @@ struct Location: Codable, Identifiable {
 }
 
 struct CurrentWeather: Codable {
-    let lastUpdatedEpoch: Int?      // ❌ OPCIONAL
-    let lastUpdated: String?        // ❌ OPCIONAL
-    let tempC: Double?              // ❌ OPCIONAL
-    let tempF: Double?              // ❌ OPCIONAL
-    let isDay: Int?                 // ❌ OPCIONAL
+    let lastUpdatedEpoch: Int?
+    let lastUpdated: String?
+    let tempC: Double?
+    let tempF: Double?
+    let isDay: Int?
     let condition: WeatherCondition
-    let windMph: Double?            // ❌ OPCIONAL
-    let windKph: Double?            // ❌ OPCIONAL
-    let windDegree: Int?            // ❌ OPCIONAL
-    let windDir: String?            // ❌ OPCIONAL
-    let pressureMb: Double?         // ❌ OPCIONAL
-    let pressureIn: Double?         // ❌ OPCIONAL
-    let precipMm: Double?           // ❌ OPCIONAL
-    let precipIn: Double?           // ❌ OPCIONAL
-    let humidity: Int?              // ❌ OPCIONAL
-    let cloud: Int?                 // ❌ OPCIONAL
-    let feelslikeC: Double?         // ❌ OPCIONAL
-    let feelslikeF: Double?         // ❌ OPCIONAL
-    let visKm: Double?              // ❌ OPCIONAL
-    let visMiles: Double?           // ❌ OPCIONAL
-    let uv: Double?                 // ❌ OPCIONAL
-    let gustMph: Double?            // ❌ OPCIONAL
-    let gustKph: Double?            // ❌ OPCIONAL
+    let windMph: Double?
+    let windKph: Double?
+    let windDegree: Int?
+    let windDir: String?
+    let pressureMb: Double?
+    let pressureIn: Double?
+    let precipMm: Double?
+    let precipIn: Double?
+    let humidity: Int
+    let cloud: Int
+    let feelslikeC: Double?
+    let feelslikeF: Double?
+    let visKm: Double?
+    let visMiles: Double?
+    let uv: Double
+    let gustMph: Double?
+    let gustKph: Double?
     
     enum CodingKeys: String, CodingKey {
         case lastUpdatedEpoch = "last_updated_epoch"

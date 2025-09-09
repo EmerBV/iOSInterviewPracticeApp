@@ -411,7 +411,7 @@ extension WeatherVM {
                 },
                 receiveValue: { [weak self] weather in
                     self?.currentWeather = weather
-                    self?.printWeatherData() // 🐛 DEBUG: Ver datos completos
+                    //self?.printWeatherData() // 🐛 DEBUG: Ver datos completos
                 }
             )
             .store(in: &cancellables)
@@ -437,7 +437,8 @@ extension WeatherVM {
                 receiveValue: { [weak self] weather in
                     print("✅ Forecast success - has forecast: \(weather.hasForecast)")
                     self?.currentWeather = weather
-                    self?.printWeatherData() // 🐛 DEBUG: Ver datos completos
+                    //self?.printWeatherData() // 🐛 DEBUG: Ver datos
+                    self?.printRealWeatherData() // 🐛 DEBUG: Ver datos completos
                 }
             )
             .store(in: &cancellables)
@@ -475,9 +476,16 @@ extension WeatherVM {
     }
     
     var currentTemperature: String {
-        guard let weather = currentWeather,
-              let tempC = weather.current.tempC else { return "--°" }
-        return "\(Int(tempC))°C"
+        guard let weather = currentWeather else { return "--°" }
+        
+        // 🐛 DEBUG: Ver si el problema está aquí
+        if let tempC = weather.current.tempC {
+            print("🌡️ Found tempC: \(tempC)")
+            return "\(Int(tempC))°C"
+        } else {
+            print("🌡️ tempC is NIL!")
+            return "--°"
+        }
     }
     
     var currentCondition: String {
@@ -495,33 +503,72 @@ extension WeatherVM {
     }
     
     var currentWindSpeed: String {
-        guard let weather = currentWeather,
-              let windKph = weather.current.windKph else { return "--" }
-        return "\(Int(windKph)) km/h"
+        guard let weather = currentWeather else { return "--" }
+        
+        if let windKph = weather.current.windKph {
+            print("💨 Found windKph: \(windKph)")
+            return "\(Int(windKph)) km/h"
+        } else {
+            print("💨 windKph is NIL!")
+            return "--"
+        }
     }
     
     var currentHumidity: String {
-        guard let weather = currentWeather,
-              let humidity = weather.current.humidity else { return "--%" }
-        return "\(humidity)%"
+        guard let weather = currentWeather else { return "--%" }
+        
+        if let humidity = weather.current.humidity {
+            print("💧 Found humidity: \(humidity)")
+            return "\(humidity)%"
+        } else {
+            print("💧 humidity is NIL!")
+            return "--%"
+        }
     }
     
     var currentFeelsLike: String {
-        guard let weather = currentWeather,
-              let feelslikeC = weather.current.feelslikeC else { return "--°" }
-        return "\(Int(feelslikeC))°C"
+        guard let weather = currentWeather else { return "--°" }
+        
+        if let feelslikeC = weather.current.feelslikeC {
+            print("🌡️ Found feelslike: \(feelslikeC)")
+            return "\(Int(feelslikeC))°C"
+        } else {
+            print("🌡️ feelslikeC is NIL!")
+            return "--°"
+        }
     }
     
     var currentPressure: String {
-        guard let weather = currentWeather,
-              let pressureMb = weather.current.pressureMb else { return "--" }
-        return "\(Int(pressureMb)) mb"
+        guard let weather = currentWeather else { return "--" }
+        
+        if let pressureMb = weather.current.pressureMb {
+            print("📊 Found pressure: \(pressureMb)")
+            return "\(Int(pressureMb)) mb"
+        } else {
+            print("📊 pressureMb is NIL!")
+            return "--"
+        }
     }
     
     var currentUV: String {
-        guard let weather = currentWeather,
-              let uv = weather.current.uv else { return "--" }
-        return "\(Int(uv))"
+        guard let weather = currentWeather else { return "--" }
+        
+        if let uv = weather.current.uv {
+            print("☀️ Found UV: \(uv)")
+            return "\(Int(uv))"
+        } else {
+            print("☀️ UV is NIL!")
+            return "--"
+        }
+    }
+    
+    func temperatureRange(for day: ForecastDay) -> String {
+        let maxTemp = day.day.maxtempC ?? 0
+        let minTemp = day.day.mintempC ?? 0
+        
+        print("📅 Day \(day.date): maxTemp=\(day.day.maxtempC?.description ?? "NIL"), minTemp=\(day.day.mintempC?.description ?? "NIL")")
+        
+        return "\(Int(maxTemp))° / \(Int(minTemp))°"
     }
     
     var currentVisibility: String {
@@ -566,12 +613,6 @@ extension WeatherVM {
         return dateString
     }
     
-    func temperatureRange(for day: ForecastDay) -> String {
-        let maxTemp = day.day.maxtempC ?? 0
-        let minTemp = day.day.mintempC ?? 0
-        return "\(Int(maxTemp))° / \(Int(minTemp))°"
-    }
-    
     // MARK: - Debug Helper
     func printWeatherData() {
         guard let weather = currentWeather else {
@@ -584,9 +625,9 @@ extension WeatherVM {
         print("🌡️ Temperature: \(weather.current.tempC ?? 0)°C")
         print("☁️ Condition: \(weather.current.condition.text)")
         print("💨 Wind: \(weather.current.windKph ?? 0) km/h")
-        print("💧 Humidity: \(weather.current.humidity ?? 0)%")
+        print("💧 Humidity: \(weather.current.humidity)%")
         print("📊 Pressure: \(weather.current.pressureMb ?? 0) mb")
-        print("☀️ UV: \(weather.current.uv ?? 0)")
+        print("☀️ UV: \(weather.current.uv)")
         print("🔮 Has Forecast: \(weather.hasForecast)")
         print("📅 Forecast Days: \(weather.forecastDays.count)")
         
@@ -598,5 +639,66 @@ extension WeatherVM {
                 print("  Day \(index + 1): \(day.date) - \(day.day.condition.text) - \(Int(maxTemp))°/\(Int(minTemp))°")
             }
         }
+    }
+    
+    // MARK: - Debug Helper COMPLETO
+    func printRealWeatherData() {
+        guard let weather = currentWeather else {
+            print("🚫 No weather data available")
+            return
+        }
+        
+        print("🌤️ REAL Weather Data Debug:")
+        print("📍 Location: \(weather.location.name), \(weather.location.country)")
+        
+        // Current Weather - Mostrar valores REALES (no con ??)
+        print("🌡️ Current Weather Fields:")
+        print("  tempC: \(weather.current.tempC?.description ?? "NIL")")
+        print("  tempF: \(weather.current.tempF?.description ?? "NIL")")
+        print("  condition.text: '\(weather.current.condition.text)'")
+        print("  condition.code: \(weather.current.condition.code)")
+        print("  windKph: \(weather.current.windKph?.description ?? "NIL")")
+        print("  windMph: \(weather.current.windMph?.description ?? "NIL")")
+        print("  windDegree: \(weather.current.windDegree?.description ?? "NIL")")
+        print("  windDir: '\(weather.current.windDir ?? "NIL")'")
+        print("  pressureMb: \(weather.current.pressureMb?.description ?? "NIL")")
+        print("  humidity: \(weather.current.humidity.description)")
+        print("  cloud: \(weather.current.cloud.description)")
+        print("  feelslikeC: \(weather.current.feelslikeC?.description ?? "NIL")")
+        print("  visKm: \(weather.current.visKm?.description ?? "NIL")")
+        print("  uv: \(weather.current.uv.description)")
+        print("  gustKph: \(weather.current.gustKph?.description ?? "NIL")")
+        print("  isDay: \(weather.current.isDay?.description ?? "NIL")")
+        print("  precipMm: \(weather.current.precipMm?.description ?? "NIL")")
+        
+        // Forecast Data
+        print("🔮 Has Forecast: \(weather.hasForecast)")
+        print("📅 Forecast Days: \(weather.forecastDays.count)")
+        
+        if weather.hasForecast {
+            print("🗓️ Forecast Details:")
+            for (index, day) in weather.forecastDays.enumerated() {
+                print("  Day \(index + 1): \(day.date)")
+                print("    condition: '\(day.day.condition.text)'")
+                print("    maxtempC: \(day.day.maxtempC?.description ?? "NIL")")
+                print("    mintempC: \(day.day.mintempC?.description ?? "NIL")")
+                print("    avghumidity: \(day.day.avghumidity?.description ?? "NIL")")
+                print("    maxwindKph: \(day.day.maxwindKph?.description ?? "NIL")")
+                print("    uv: \(day.day.uv?.description ?? "NIL")")
+            }
+        }
+    }
+    
+    // MARK: - Método para agregar debug en fetchForecastWithCombine
+    func debugNetworkResponse() {
+        print("🔍 Adding API Response Debug to WeatherService...")
+        print("💡 Add this to WeatherService.fetchForecast method:")
+        print("""
+            // En WeatherService.fetchForecast, después de obtener data:
+            print("📄 Raw API Response for Madrid:")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print(jsonString)
+            }
+            """)
     }
 }

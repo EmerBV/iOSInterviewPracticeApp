@@ -201,8 +201,30 @@ class WeatherService {
         print("🔗 Request URL will be: \(baseURL)/forecast.json?key=\(apiKey)&q=\(city)&aqi=yes&days=\(days)")
         
         do {
+            // Hacer request como Data primero
+            let rawData = try await networkService.request(request, responseType: Data.self)
+            
+            print("📡 RAW WeatherAPI Response:")
+            if let jsonString = String(data: rawData, encoding: .utf8) {
+                print(jsonString)
+            }
+            // 🐛 AGREGAR ESTE DEBUG AQUÍ:
+            print("📡 Making network request...")
             let response = try await networkService.request(request, responseType: WeatherResponse.self)
+            
+            // 🐛 DEBUG: Imprimir algunos valores clave
             print("✅ Successfully decoded forecast response")
+            print("🌡️ Current temp from API: \(response.current.tempC?.description ?? "NIL")")
+            print("💨 Wind from API: \(response.current.windKph?.description ?? "NIL")")
+            print("📊 Pressure from API: \(response.current.pressureMb?.description ?? "NIL")")
+            print("🗓️ Forecast days count: \(response.forecast?.forecastday.count ?? 0)")
+            
+            if let firstDay = response.forecast?.forecastday.first {
+                print("📅 First forecast day:")
+                print("  Max temp: \(firstDay.day.maxtempC?.description ?? "NIL")")
+                print("  Min temp: \(firstDay.day.mintempC?.description ?? "NIL")")
+            }
+            
             return response
         } catch let networkError as NetworkError {
             print("❌ Network error: \(networkError)")

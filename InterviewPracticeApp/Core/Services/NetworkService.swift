@@ -64,6 +64,28 @@ final class NetworkService: NetworkServiceProtocol {
                 print(jsonString)
             }
             
+            // También vamos a parsear como Dictionary para ver la estructura
+            if let jsonDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                print("📊 Response Structure:")
+                
+                if let current = jsonDict["current"] as? [String: Any] {
+                    print("🌡️ Current Weather Keys:")
+                    for (key, value) in current {
+                        print("  '\(key)': \(type(of: value)) = \(value)")
+                    }
+                }
+                
+                if let forecast = jsonDict["forecast"] as? [String: Any],
+                   let forecastdays = forecast["forecastday"] as? [[String: Any]],
+                   let firstDay = forecastdays.first,
+                   let day = firstDay["day"] as? [String: Any] {
+                    print("📅 Forecast Day Keys:")
+                    for (key, value) in day {
+                        print("  '\(key)': \(type(of: value)) = \(value)")
+                    }
+                }
+            }
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.networkError(URLError(.badServerResponse))
             }
@@ -78,6 +100,11 @@ final class NetworkService: NetworkServiceProtocol {
                 let decodedObject = try decoder.decode(T.self, from: data)
                 return decodedObject
             } catch {
+                print("❌ DECODING ERROR DETAILS:")
+                print("Error: \(error)")
+                if let decodingError = error as? DecodingError {
+                    print("Decoding Error: \(decodingError)")
+                }
                 throw NetworkError.decodingError(error)
             }
             
