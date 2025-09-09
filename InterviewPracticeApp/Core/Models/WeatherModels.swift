@@ -175,7 +175,7 @@ struct Astro: Codable {
     let moonrise: String?
     let moonset: String?
     let moonPhase: String?
-    let moonIllumination: String?
+    let moonIllumination: Int?
     let isMoonUp: Int?
     let isSunUp: Int?
     
@@ -303,4 +303,8 @@ enum WeatherError: LocalizedError {
             return "Demasiadas peticiones. Intenta más tarde."
         }
     }
+}
+
+struct CitySearchResponse: Codable {
+    let results: [Location]
 }

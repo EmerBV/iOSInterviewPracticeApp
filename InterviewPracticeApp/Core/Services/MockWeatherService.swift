@@ -125,7 +125,7 @@ class MockWeatherService: WeatherService {
                 moonrise: "20:15",
                 moonset: "07:30",
                 moonPhase: "Waxing Crescent",
-                moonIllumination: "25",
+                moonIllumination: 25,
                 isMoonUp: 0,
                 isSunUp: 1
             )

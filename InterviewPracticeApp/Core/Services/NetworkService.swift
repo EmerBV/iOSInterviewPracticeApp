@@ -41,7 +41,7 @@ final class NetworkService: NetworkServiceProtocol {
         
         // Configure decoder
         self.decoder.dateDecodingStrategy = .iso8601
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        //self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         
         // Configure encoder
         self.encoder.dateEncodingStrategy = .iso8601
@@ -118,6 +118,55 @@ final class NetworkService: NetworkServiceProtocol {
     }
     
     // MARK: - Combine Implementation
+    /*
+     func requestPublisher<T: Codable>(
+     _ request: NetworkRequest,
+     responseType: T.Type
+     ) -> AnyPublisher<T, NetworkError> {
+     do {
+     let urlRequest = try buildURLRequest(from: request)
+     
+     return session.dataTaskPublisher(for: urlRequest)
+     .tryMap { [weak self] data, response -> Data in
+     guard let self = self else {
+     throw NetworkError.networkError(URLError(.unknown))
+     }
+     
+     guard let httpResponse = response as? HTTPURLResponse else {
+     throw NetworkError.networkError(URLError(.badServerResponse))
+     }
+     
+     try self.validateResponse(httpResponse)
+     
+     guard !data.isEmpty else {
+     throw NetworkError.noData
+     }
+     
+     return data
+     }
+     .decode(type: T.self, decoder: decoder)
+     .mapError { [weak self] error -> NetworkError in
+     guard let self = self else {
+     return NetworkError.networkError(error)
+     }
+     
+     if let urlError = error as? URLError {
+     return self.mapURLError(urlError)
+     } else if let decodingError = error as? DecodingError {
+     return NetworkError.decodingError(decodingError)
+     } else {
+     return NetworkError.networkError(error)
+     }
+     }
+     .eraseToAnyPublisher()
+     
+     } catch {
+     return Fail(error: error as? NetworkError ?? NetworkError.invalidURL)
+     .eraseToAnyPublisher()
+     }
+     }
+     */
+    
     func requestPublisher<T: Codable>(
         _ request: NetworkRequest,
         responseType: T.Type
@@ -131,36 +180,60 @@ final class NetworkService: NetworkServiceProtocol {
                         throw NetworkError.networkError(URLError(.unknown))
                     }
                     
+                    // 🐛 DEBUG: Agregar logs para Combine
+                    print("📡 NETWORK COMBINE: Received response")
+                    print("📦 NETWORK COMBINE: Data length: \(data.count) bytes")
+                    
                     guard let httpResponse = response as? HTTPURLResponse else {
+                        print("❌ NETWORK COMBINE: Invalid HTTP response")
                         throw NetworkError.networkError(URLError(.badServerResponse))
                     }
+                    
+                    print("📊 NETWORK COMBINE: HTTP Status: \(httpResponse.statusCode)")
                     
                     try self.validateResponse(httpResponse)
                     
                     guard !data.isEmpty else {
+                        print("❌ NETWORK COMBINE: Empty data")
                         throw NetworkError.noData
                     }
                     
                     return data
                 }
                 .decode(type: T.self, decoder: decoder)
+                .handleEvents(
+                    receiveOutput: { output in
+                        print("✅ NETWORK COMBINE: Decode successful for type: \(T.self)")
+                    },
+                    receiveCompletion: { completion in
+                        switch completion {
+                        case .finished:
+                            print("🏁 NETWORK COMBINE: Request completed successfully")
+                        case .failure(let error):
+                            print("❌ NETWORK COMBINE: Request failed with error: \(error)")
+                        }
+                    }
+                )
                 .mapError { [weak self] error -> NetworkError in
                     guard let self = self else {
                         return NetworkError.networkError(error)
                     }
                     
+                    print("🔄 NETWORK COMBINE: Mapping error: \(error)")
+                    
                     if let urlError = error as? URLError {
                         return self.mapURLError(urlError)
-                    } else if let decodingError = error as? DecodingError {
-                        return NetworkError.decodingError(decodingError)
+                    } else if error is DecodingError {
+                        print("💥 NETWORK COMBINE: Decoding error details: \(error)")
+                        return NetworkError.decodingError(error)
                     } else {
                         return NetworkError.networkError(error)
                     }
                 }
                 .eraseToAnyPublisher()
-            
         } catch {
-            return Fail(error: error as? NetworkError ?? NetworkError.invalidURL)
+            print("❌ NETWORK COMBINE: Failed to build URL request: \(error)")
+            return Fail(error: NetworkError.invalidURL)
                 .eraseToAnyPublisher()
         }
     }

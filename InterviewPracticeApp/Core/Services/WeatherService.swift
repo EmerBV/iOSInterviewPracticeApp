@@ -155,6 +155,7 @@ class WeatherService {
             .eraseToAnyPublisher()
     }
     
+    
     func fetchForecastPublisher(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, WeatherError> {
         let request = APIRequest(
             baseURL: baseURL,
@@ -172,6 +173,129 @@ class WeatherService {
             .mapError(mapNetworkError)
             .eraseToAnyPublisher()
     }
+    
+    /*
+    func fetchForecastPublisher(for city: String, days: Int = 3) -> AnyPublisher<WeatherResponse, WeatherError> {
+        print("🔄 COMBINE DIRECT: Starting forecast publisher for: \(city)")
+        
+        // Construir URL directamente
+        var components = URLComponents(string: "\(baseURL)/forecast.json")!
+        components.queryItems = [
+            URLQueryItem(name: "key", value: apiKey),
+            URLQueryItem(name: "q", value: city),
+            URLQueryItem(name: "aqi", value: "yes"),
+            URLQueryItem(name: "days", value: "\(days)")
+        ]
+        
+        guard let url = components.url else {
+            print("❌ COMBINE DIRECT: Failed to create URL")
+            return Fail(error: WeatherError.invalidURL)
+                .eraseToAnyPublisher()
+        }
+        
+        print("🔗 COMBINE DIRECT URL: \(url.absoluteString)")
+        
+        // Usar URLSession directamente sin NetworkService
+        return URLSession.shared.dataTaskPublisher(for: url)
+            .handleEvents(
+                receiveOutput: { data, response in
+                    print("📡 COMBINE DIRECT: Received response")
+                    print("📦 COMBINE DIRECT: Data length: \(data.count) bytes")
+                    
+                    if let httpResponse = response as? HTTPURLResponse {
+                        print("📊 COMBINE DIRECT: HTTP Status: \(httpResponse.statusCode)")
+                    }
+                }
+            )
+            .map(\.data) // Extraer solo los datos
+            .tryMap { data -> WeatherResponse in
+                print("🔄 COMBINE DIRECT: Starting decode...")
+                
+                // Debug: Mostrar JSON RAW
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    let preview = String(jsonString.prefix(200))
+                    print("📄 COMBINE DIRECT JSON Preview: \(preview)...")
+                }
+                
+                // Crear decoder limpio
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                // ✅ NO usar keyDecodingStrategy
+                
+                do {
+                    let response = try decoder.decode(WeatherResponse.self, from: data)
+                    
+                    print("✅ COMBINE DIRECT: Decode SUCCESS!")
+                    print("🔍 COMBINE DIRECT Decoded values:")
+                    print("  tempC: \(response.current.tempC?.description ?? "NIL")")
+                    print("  windKph: \(response.current.windKph?.description ?? "NIL")")
+                    print("  pressureMb: \(response.current.pressureMb?.description ?? "NIL")")
+                    print("  humidity: \(response.current.humidity.description)")
+                    print("  cloud: \(response.current.cloud.description)")
+                    print("  uv: \(response.current.uv.description)")
+                    
+                    if let firstDay = response.forecast?.forecastday.first {
+                        print("📅 COMBINE DIRECT Forecast:")
+                        print("  maxtemp: \(firstDay.day.maxtempC?.description ?? "NIL")")
+                        print("  mintemp: \(firstDay.day.mintempC?.description ?? "NIL")")
+                    }
+                    
+                    return response
+                    
+                } catch let decodingError {
+                    print("❌ COMBINE DIRECT DECODING ERROR:")
+                    print("Error: \(decodingError)")
+                    
+                    if let decodingError = decodingError as? DecodingError {
+                        switch decodingError {
+                        case .keyNotFound(let key, let context):
+                            print("🔑 DIRECT - Key not found: \(key.stringValue)")
+                            print("📍 DIRECT - Path: \(context.codingPath.map { $0.stringValue })")
+                            print("📋 DIRECT - Debug: \(context.debugDescription)")
+                            
+                            // Mostrar las claves disponibles si es posible
+                            if let data = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                                if context.codingPath.isEmpty {
+                                    print("🔍 DIRECT - Available root keys: \(Array(data.keys))")
+                                }
+                            }
+                            
+                        case .typeMismatch(let type, let context):
+                            print("🔄 DIRECT - Type mismatch: expected \(type)")
+                            print("📍 DIRECT - Path: \(context.codingPath.map { $0.stringValue })")
+                            print("📋 DIRECT - Debug: \(context.debugDescription)")
+                            
+                        case .valueNotFound(let type, let context):
+                            print("❓ DIRECT - Value not found: \(type)")
+                            print("📍 DIRECT - Path: \(context.codingPath.map { $0.stringValue })")
+                            
+                        case .dataCorrupted(let context):
+                            print("💥 DIRECT - Data corrupted")
+                            print("📍 DIRECT - Path: \(context.codingPath.map { $0.stringValue })")
+                            
+                        @unknown default:
+                            print("🤷‍♂️ DIRECT - Unknown decoding error")
+                        }
+                    }
+                    
+                    throw decodingError
+                }
+            }
+            .mapError { error -> WeatherError in
+                print("🔄 COMBINE DIRECT: Final error mapping: \(error)")
+                
+                if let urlError = error as? URLError {
+                    return WeatherError.networkError(urlError)
+                } else if let decodingError = error as? DecodingError {
+                    return WeatherError.decodingError(decodingError)
+                } else {
+                    return WeatherError.networkError(error)
+                }
+            }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+     */
     
     func searchCitiesPublisher(query: String) -> AnyPublisher<[Location], WeatherError> {
         let request = APIRequest(
