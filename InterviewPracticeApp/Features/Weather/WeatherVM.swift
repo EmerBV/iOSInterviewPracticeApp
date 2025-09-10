@@ -164,35 +164,6 @@ extension WeatherVM {
             .store(in: &cancellables)
     }
     
-    /*
-    func fetchForecastWithCombine(for city: String, days: Int = 3) {
-        print("🔄 Starting forecast fetch with Combine for: \(city)")
-        isLoading = true
-        errorMessage = nil
-        selectedCity = city
-        
-        weatherService.fetchForecastPublisher(for: city, days: days)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    print("🏁 Forecast fetch completed")
-                    self?.isLoading = false
-                    if case .failure(let error) = completion {
-                        print("❌ Forecast error: \(error)")
-                        self?.errorMessage = error.localizedDescription
-                    }
-                },
-                receiveValue: { [weak self] weather in
-                    print("✅ Forecast success - has forecast: \(weather.hasForecast)")
-                    self?.currentWeather = weather
-                    //self?.printWeatherData() // 🐛 DEBUG: Ver datos
-                    self?.printRealWeatherData() // 🐛 DEBUG: Ver datos completos
-                }
-            )
-            .store(in: &cancellables)
-    }
-     */
-    
     func fetchForecastWithCombine(for city: String, days: Int = 3) {
         print("🔄 Starting forecast fetch with Combine for: \(city)")
         
@@ -232,7 +203,8 @@ extension WeatherVM {
         }
         
         searchCancellable = weatherService.searchCitiesPublisher(query: query)
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+        // Elimino el debounce ya que se come los valores y solo deja pasar el completion. En su lugar aplico el debounce en el método searchTextChangedWithCombine de WeatherVC
+        //.debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
@@ -241,6 +213,7 @@ extension WeatherVM {
                     }
                 },
                 receiveValue: { [weak self] cities in
+                    print("✅ Found \(cities.count) cities")
                     self?.citySuggestions = cities
                 }
             )
