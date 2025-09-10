@@ -680,7 +680,7 @@ final class WeatherVC: BaseViewController {
     
     private lazy var refreshControl: UIRefreshControl = {
         let control = UIRefreshControl()
-        control.addTarget(self, action: #selector(refreshWeather), for: .valueChanged)
+        control.addTarget(self, action: #selector(refreshWeatherWithCombine), for: .valueChanged)
         return control
     }()
     
@@ -715,7 +715,7 @@ final class WeatherVC: BaseViewController {
         textField.returnKeyType = .search
         textField.autocapitalizationType = .words
         textField.autocorrectionType = .no
-        textField.addTarget(self, action: #selector(searchTextChanged), for: .editingChanged)
+        textField.addTarget(self, action: #selector(searchTextChangedWithCombine), for: .editingChanged)
         textField.translatesAutoresizingMaskIntoConstraints = false
         return textField
     }()
@@ -1097,35 +1097,7 @@ final class WeatherVC: BaseViewController {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         view.addGestureRecognizer(tapGesture)
     }
-    
-    // MARK: - Actions
-    /*
-     @objc private func refreshWeather() {
-     Task {
-     await viewModel.refreshWeather()
-     }
-     }
-     
-     @objc private func searchTextChanged() {
-     guard let query = searchTextField.text else { return }
-     
-     Task {
-     await viewModel.searchCities(query: query)
-     }
-     }
-     */
-    
-    // En WeatherVC, usar solo Combine methods:
-    @objc private func refreshWeather() {
-        viewModel.fetchForecastWithCombine(for: viewModel.selectedCity)
-        Utils.hapticFeedback(.light)
-    }
-    
-    @objc private func searchTextChanged() {
-        guard let query = searchTextField.text else { return }
-        viewModel.searchCitiesWithCombine(query: query)
-    }
-    
+
     @objc private func dismissKeyboard() {
         view.endEditing(true)
         suggestionsHeightConstraint.constant = 0
@@ -1311,6 +1283,37 @@ final class WeatherVC: BaseViewController {
     
     private func temperatureRange(for day: ForecastDay) -> String {
         return "\(Int(day.day.maxtempC ?? 0))° / \(Int(day.day.mintempC ?? 0))°"
+    }
+}
+
+extension WeatherVC {
+    // MARK: - Actions Async/Await
+    @objc private func refreshWeather() {
+        Task {
+            await viewModel.refreshWeather()
+        }
+        Utils.hapticFeedback(.light)
+    }
+    
+    @objc private func searchTextChanged() {
+        guard let query = searchTextField.text else { return }
+        
+        Task {
+            await viewModel.searchCities(query: query)
+        }
+    }
+}
+
+extension WeatherVC {
+    // En WeatherVC, usar solo Combine methods:
+    @objc private func refreshWeatherWithCombine() {
+        viewModel.refreshWeatherWithCombine()
+        Utils.hapticFeedback(.light)
+    }
+    
+    @objc private func searchTextChangedWithCombine() {
+        guard let query = searchTextField.text else { return }
+        viewModel.searchCitiesWithCombine(query: query)
     }
 }
 

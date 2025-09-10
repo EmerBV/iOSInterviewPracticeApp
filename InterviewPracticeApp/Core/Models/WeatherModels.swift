@@ -31,9 +31,9 @@ struct Location: Codable, Identifiable {
     let country: String
     let lat: Double
     let lon: Double
-    let tzId: String?              // ❌ OPCIONAL
-    let localtimeEpoch: Int?       // ❌ OPCIONAL
-    let localtime: String?         // ❌ OPCIONAL
+    let tzId: String?
+    let localtimeEpoch: Int?
+    let localtime: String?
     
     var id: String {
         return "\(lat)-\(lon)-\(name)"
@@ -110,10 +110,10 @@ struct Forecast: Codable {
 
 struct ForecastDay: Codable, Identifiable {
     let date: String
-    let dateEpoch: Int?             // ❌ OPCIONAL
+    let dateEpoch: Int?
     let day: DayWeather
-    let astro: Astro?               // ❌ OPCIONAL
-    let hour: [HourWeather]?        // ❌ OPCIONAL
+    let astro: Astro?
+    let hour: [HourWeather]?
     
     var id: String { date }
     
@@ -125,26 +125,26 @@ struct ForecastDay: Codable, Identifiable {
 }
 
 struct DayWeather: Codable {
-    let maxtempC: Double?           // ❌ OPCIONAL
-    let maxtempF: Double?           // ❌ OPCIONAL
-    let mintempC: Double?           // ❌ OPCIONAL
-    let mintempF: Double?           // ❌ OPCIONAL
-    let avgtempC: Double?           // ❌ OPCIONAL
-    let avgtempF: Double?           // ❌ OPCIONAL
-    let maxwindMph: Double?         // ❌ OPCIONAL
-    let maxwindKph: Double?         // ❌ OPCIONAL
-    let totalprecipMm: Double?      // ❌ OPCIONAL
-    let totalprecipIn: Double?      // ❌ OPCIONAL
-    let totalsnowCm: Double?        // ❌ OPCIONAL
-    let avgvisKm: Double?           // ❌ OPCIONAL
-    let avgvisMiles: Double?        // ❌ OPCIONAL
-    let avghumidity: Double?        // ❌ OPCIONAL
-    let dailyWillItRain: Int?       // ❌ OPCIONAL
-    let dailyChanceOfRain: Int?     // ❌ OPCIONAL
-    let dailyWillItSnow: Int?       // ❌ OPCIONAL
-    let dailyChanceOfSnow: Int?     // ❌ OPCIONAL
+    let maxtempC: Double?
+    let maxtempF: Double?
+    let mintempC: Double?
+    let mintempF: Double?
+    let avgtempC: Double?
+    let avgtempF: Double?
+    let maxwindMph: Double?
+    let maxwindKph: Double?
+    let totalprecipMm: Double?
+    let totalprecipIn: Double?
+    let totalsnowCm: Double?
+    let avgvisKm: Double?
+    let avgvisMiles: Double?
+    let avghumidity: Double?
+    let dailyWillItRain: Int?
+    let dailyChanceOfRain: Int?
+    let dailyWillItSnow: Int?
+    let dailyChanceOfSnow: Int?
     let condition: WeatherCondition
-    let uv: Double?                 // ❌ OPCIONAL
+    let uv: Double?
     
     enum CodingKeys: String, CodingKey {
         case maxtempC = "maxtemp_c"

@@ -14,7 +14,7 @@ final class WeatherVM: ObservableObject {
     @Published var currentWeather: WeatherResponse?
     @Published var isLoading: Bool = false
     @Published var citySuggestions: [Location] = []
-    @Published var selectedCity: String = "Madrid"
+    @Published var selectedCity: String = "Tokyo"
     @Published var errorMessage: String?
     
     // MARK: - Dependencies
@@ -27,12 +27,18 @@ final class WeatherVM: ObservableObject {
         self.weatherService = weatherService
         print("🏗️ WeatherVM initialized")
         
+        // Async/Await
+        //setupInitialData()
+        
+        // Combine
         // Usar Combine para inicialización (mejor para UIKit)
-        //fetchForecastWithCombine(for: selectedCity)
-        setupInitialData()
+        setupInitialDataWithCombine()
     }
     
-    // MARK: - Async/Await Methods (con dispatch al main queue)
+}
+
+// MARK: - WeatherVM Extension Async/Await Methods (con dispatch al main queue)
+extension WeatherVM {
     func fetchWeather(for city: String) async {
         await MainActor.run {
             isLoading = true
@@ -120,8 +126,7 @@ final class WeatherVM: ObservableObject {
     // MARK: - Private Methods
     private func setupInitialData() {
         Task {
-            //await fetchForecast(for: selectedCity)
-            fetchForecastWithCombine(for: selectedCity)
+            await fetchForecast(for: selectedCity)
         }
     }
 }
@@ -208,11 +213,19 @@ extension WeatherVM {
                 }
             )
     }
+    
+    func refreshWeatherWithCombine() {
+        fetchForecastWithCombine(for: selectedCity)
+    }
+    
+    // MARK: - Private Methods
+    private func setupInitialDataWithCombine() {
+        fetchForecastWithCombine(for: selectedCity)
+    }
 }
 
 // MARK: - WeatherVM Helper Extensions
 extension WeatherVM {
-    
     var hasWeatherData: Bool {
         currentWeather != nil
     }
@@ -220,7 +233,6 @@ extension WeatherVM {
     var currentTemperature: String {
         guard let weather = currentWeather else { return "--°" }
         
-        // 🐛 DEBUG: Ver si el problema está aquí
         if let tempC = weather.current.tempC {
             print("🌡️ Found tempC: \(tempC)")
             return "\(Int(tempC))°C"
@@ -258,17 +270,17 @@ extension WeatherVM {
     
     // Se pone de esta manera si el campo de la entidad es opcional
     /*
-    var currentHumidity: String {
-        guard let weather = currentWeather else { return "--%" }
-        
-        if let humidity = weather.current.humidity {
-            print("💧 Found humidity: \(humidity)")
-            return "\(humidity)%"
-        } else {
-            print("💧 humidity is NIL!")
-            return "--%"
-        }
-    }
+     var currentHumidity: String {
+     guard let weather = currentWeather else { return "--%" }
+     
+     if let humidity = weather.current.humidity {
+     print("💧 Found humidity: \(humidity)")
+     return "\(humidity)%"
+     } else {
+     print("💧 humidity is NIL!")
+     return "--%"
+     }
+     }
      */
     
     var currentHumidity: String {
@@ -303,22 +315,22 @@ extension WeatherVM {
     }
     
     /*
-    var currentUV: String {
-        guard let weather = currentWeather else { return "--" }
-        
-        if let uv = weather.current.uv {
-            print("☀️ Found UV: \(uv)")
-            return "\(Int(uv))"
-        } else {
-            print("☀️ UV is NIL!")
-            return "--"
-        }
-    }
+     var currentUV: String {
+     guard let weather = currentWeather else { return "--" }
+     
+     if let uv = weather.current.uv {
+     print("☀️ Found UV: \(uv)")
+     return "\(Int(uv))"
+     } else {
+     print("☀️ UV is NIL!")
+     return "--"
+     }
+     }
      */
     
     var currentUV: String {
         guard let weather = currentWeather else { return "--" }
-
+        
         let uv = weather.current.uv
         return String(format: "%.1f", uv)
     }

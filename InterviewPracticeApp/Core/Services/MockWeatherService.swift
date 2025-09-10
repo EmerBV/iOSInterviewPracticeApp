@@ -81,7 +81,7 @@ class MockWeatherService: WeatherService {
     }
     
     private func createMockForecastResponse(for city: String, days: Int) -> WeatherResponse {
-        var baseResponse = createMockWeatherResponse(for: city)
+        let baseResponse = createMockWeatherResponse(for: city)
         
         // Crear días de pronóstico mock
         let forecastDays = (0..<days).map { dayOffset in
