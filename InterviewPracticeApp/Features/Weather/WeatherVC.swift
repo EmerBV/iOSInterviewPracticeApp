@@ -838,6 +838,7 @@ final class WeatherVC: BaseViewController {
     }()
     
     // MARK: - Data Properties
+    //private var citySuggestions: [Location] = []
     private var suggestionsHeightConstraint: NSLayoutConstraint!
     
     // MARK: - Initialization
@@ -1051,6 +1052,7 @@ final class WeatherVC: BaseViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] weather in
                 self?.updateWeatherUI(weather)
+                self?.refreshControl.endRefreshing()
             }
             .store(in: &cancellables)
         
@@ -1058,12 +1060,16 @@ final class WeatherVC: BaseViewController {
         viewModel.isLoadingPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isLoading in
-                if isLoading {
-                    self?.loadingIndicator.startAnimating()
-                } else {
-                    self?.loadingIndicator.stopAnimating()
-                    self?.refreshControl.endRefreshing()
-                }
+                self?.updateLoadingState(isLoading)
+            }
+            .store(in: &cancellables)
+        
+        // Error binding
+        viewModel.errorPublisher
+            .receive(on: DispatchQueue.main)
+            .compactMap { $0 }
+            .sink { [weak self] errorMessage in
+                self?.handleError(errorMessage)
             }
             .store(in: &cancellables)
         
@@ -1075,20 +1081,12 @@ final class WeatherVC: BaseViewController {
             }
             .store(in: &cancellables)
         
-        // Error binding
-        viewModel.errorPublisher
-            .receive(on: DispatchQueue.main)
-            .compactMap { $0 } // Solo procesar errores no nil
-            .sink { [weak self] errorMessage in
-                self?.showAlert(title: "Error", message: errorMessage)
-            }
-            .store(in: &cancellables)
-        
         // Selected city binding
         viewModel.selectedCityPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] city in
                 // Update UI if needed when city changes
+                self?.handleCitySelection(city)
             }
             .store(in: &cancellables)
     }
@@ -1100,10 +1098,13 @@ final class WeatherVC: BaseViewController {
 
     @objc private func dismissKeyboard() {
         view.endEditing(true)
+        hideSuggestions()
+        /*
         suggestionsHeightConstraint.constant = 0
         UIView.animate(withDuration: 0.3) {
             self.view.layoutIfNeeded()
         }
+         */
     }
     
     // MARK: - UI Updates
@@ -1139,6 +1140,21 @@ final class WeatherVC: BaseViewController {
         updateForecast(weather.forecastDays)
     }
     
+    private func showSuggestions(_ show: Bool) {
+        let height: CGFloat = show ? min(CGFloat(viewModel.citySuggestions.count * 44), 200) : 0
+        
+        UIView.animate(withDuration: 0.3) {
+            self.suggestionsHeightConstraint.constant = height
+            self.suggestionsTableView.isHidden = !show
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    private func hideSuggestions() {
+        showSuggestions(false)
+    }
+    
+    /*
     private func updateSuggestions(_ suggestions: [Location]) {
         let height = min(CGFloat(suggestions.count * 44), 200)
         suggestionsHeightConstraint.constant = height
@@ -1148,6 +1164,15 @@ final class WeatherVC: BaseViewController {
         }
         
         suggestionsTableView.reloadData()
+    }
+     */
+     
+    private func updateSuggestions(_ suggestions: [Location]) {
+        viewModel.citySuggestions = suggestions
+        suggestionsTableView.reloadData()
+        
+        let shouldShow = !suggestions.isEmpty && searchTextField.isFirstResponder
+        showSuggestions(shouldShow)
     }
     
     private func updateDetailValue(title: String, value: String) {
@@ -1317,20 +1342,68 @@ extension WeatherVC {
     }
 }
 
+extension WeatherVC {
+    // MARK: - Helper Methods for Better Organization
+    
+    private func updateLoadingState(_ isLoading: Bool) {
+        if isLoading {
+            loadingIndicator.startAnimating()
+        } else {
+            loadingIndicator.stopAnimating()
+            refreshControl.endRefreshing()
+        }
+    }
+    
+    private func handleError(_ errorMessage: String) {
+        showAlert(title: "Error", message: errorMessage)
+        refreshControl.endRefreshing()
+    }
+    
+    private func handleCitySelection(_ city: String) {
+        // Update search field text
+        searchTextField.text = city
+        
+        // Hide suggestions
+        hideSuggestions()
+        
+        // Log for debugging
+        print("🏙️ Ciudad seleccionada: \(city)")
+        
+        // Optional: Update any city-specific UI elements here
+        // For example, if you have a "last selected city" label
+    }
+}
+
 // MARK: - UITextFieldDelegate
 extension WeatherVC: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
+        
+        // If there's text, search for the first suggestion or fetch directly
+        if let text = textField.text, !text.isEmpty {
+            if !viewModel.citySuggestions.isEmpty {
+                // Select first suggestion
+                let firstCity = viewModel.citySuggestions[0]
+                viewModel.selectCityAndFetchWeather(firstCity.name)
+            } else {
+                // Try to fetch directly
+                viewModel.selectCityAndFetchWeather(text)
+            }
+        }
+        
         return true
     }
     
     func textFieldDidBeginEditing(_ textField: UITextField) {
-        // Show suggestions if there's text
+        // Show suggestions if there's existing text
         if let text = textField.text, !text.isEmpty {
-            Task {
-                await viewModel.searchCities(query: text)
-            }
+            viewModel.searchCitiesWithCombine(query: text)
         }
+    }
+    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        // Auto-hide suggestions when editing ends
+        hideSuggestions()
     }
 }
 
@@ -1341,18 +1414,14 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        //let cell = tableView.dequeueReusableCell(withIdentifier: "CityCell", for: indexPath)
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: CityTableViewCell.identifier, for: indexPath) as? CityTableViewCell else {
+        guard let cell = tableView.dequeueReusableCell(
+            withIdentifier: CityTableViewCell.identifier,
+            for: indexPath
+        ) as? CityTableViewCell else {
             return UITableViewCell()
         }
         
         let location = viewModel.citySuggestions[indexPath.row]
-        
-        /*
-        cell.textLabel?.text = "\(location.name), \(location.country)"
-        cell.detailTextLabel?.text = location.region
-         */
-        
         cell.configure(with: location)
         cell.accessoryType = .disclosureIndicator
         
@@ -1383,6 +1452,7 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
+        /*
         let location = viewModel.citySuggestions[indexPath.row]
         searchTextField.text = location.name
         searchTextField.resignFirstResponder()
@@ -1396,6 +1466,18 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
         // Fetch weather for selected city using Combine
         viewModel.selectedCity = location.name
         viewModel.fetchForecastWithCombine(for: location.name)
+         */
+        
+        let location = viewModel.citySuggestions[indexPath.row]
+        
+        // Dismiss keyboard immediately
+        searchTextField.resignFirstResponder()
+        
+        // Use the new ViewModel method for cleaner separation of concerns
+        viewModel.selectCityAndFetchWeather(location.name)
+        
+        // Provide haptic feedback
+        Utils.hapticFeedback(.light)
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {

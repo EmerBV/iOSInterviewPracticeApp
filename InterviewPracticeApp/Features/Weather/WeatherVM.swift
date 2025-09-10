@@ -164,6 +164,7 @@ extension WeatherVM {
             .store(in: &cancellables)
     }
     
+    /*
     func fetchForecastWithCombine(for city: String, days: Int = 3) {
         print("🔄 Starting forecast fetch with Combine for: \(city)")
         isLoading = true
@@ -186,6 +187,37 @@ extension WeatherVM {
                     self?.currentWeather = weather
                     //self?.printWeatherData() // 🐛 DEBUG: Ver datos
                     self?.printRealWeatherData() // 🐛 DEBUG: Ver datos completos
+                }
+            )
+            .store(in: &cancellables)
+    }
+     */
+    
+    func fetchForecastWithCombine(for city: String, days: Int = 3) {
+        print("🔄 Starting forecast fetch with Combine for: \(city)")
+        
+        // Clear previous error
+        errorMessage = nil
+        isLoading = true
+        selectedCity = city
+        
+        weatherService.fetchForecastPublisher(for: city, days: days)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    print("🏁 Forecast fetch completed")
+                    self?.isLoading = false
+                    
+                    if case .failure(let error) = completion {
+                        print("❌ Forecast error: \(error)")
+                        self?.errorMessage = error.localizedDescription
+                        // Keep the selected city even if there's an error
+                    }
+                },
+                receiveValue: { [weak self] weather in
+                    print("✅ Forecast success - has forecast: \(weather.hasForecast)")
+                    self?.currentWeather = weather
+                    self?.printRealWeatherData() // Debug: Ver datos completos
                 }
             )
             .store(in: &cancellables)
@@ -221,6 +253,21 @@ extension WeatherVM {
     // MARK: - Private Methods
     private func setupInitialDataWithCombine() {
         fetchForecastWithCombine(for: selectedCity)
+    }
+}
+
+// MARK: - WeatherVM Improvements
+extension WeatherVM {
+    // MARK: - Method to select city and fetch weather (Combine)
+    func selectCityAndFetchWeather(_ cityName: String) {
+        selectedCity = cityName
+        citySuggestions = [] // Clear suggestions
+        fetchForecastWithCombine(for: cityName)
+    }
+    
+    // MARK: - Clear suggestions method
+    func clearSuggestions() {
+        citySuggestions = []
     }
 }
 
