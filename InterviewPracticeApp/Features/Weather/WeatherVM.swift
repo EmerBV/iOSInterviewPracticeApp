@@ -166,11 +166,15 @@ extension WeatherVM {
     
     func fetchForecastWithCombine(for city: String, days: Int = 3) {
         print("🔄 Starting forecast fetch with Combine for: \(city)")
+        print("📊 Current weather before fetch: \(currentWeather?.location.name ?? "nil")")
         
-        // Clear previous error
+        // Clear previous error and set loading state
         errorMessage = nil
         isLoading = true
         selectedCity = city
+        
+        // Cancel any existing requests
+        cancellables.forEach { $0.cancel() }
         
         weatherService.fetchForecastPublisher(for: city, days: days)
             .receive(on: DispatchQueue.main)
@@ -183,12 +187,24 @@ extension WeatherVM {
                         print("❌ Forecast error: \(error)")
                         self?.errorMessage = error.localizedDescription
                         // Keep the selected city even if there's an error
+                    } else {
+                        print("✅ Forecast fetch successful")
                     }
                 },
                 receiveValue: { [weak self] weather in
-                    print("✅ Forecast success - has forecast: \(weather.hasForecast)")
+                    print("📦 Received weather data for: \(weather.location.name)")
+                    print("🌡️ Temperature from API: \(weather.current.tempC?.description ?? "nil")°C")
+                    print("☁️ Condition: \(weather.current.condition.text)")
+                    print("🔢 Forecast days count: \(weather.forecastDays.count)")
+                    
+                    // Update the current weather
                     self?.currentWeather = weather
-                    self?.printRealWeatherData() // Debug: Ver datos completos
+                    
+                    // Verify the update
+                    print("✅ currentWeather updated to: \(self?.currentWeather?.location.name ?? "nil")")
+                    
+                    // Debug: Print more details if needed
+                    self?.printWeatherDebugInfo()
                 }
             )
             .store(in: &cancellables)
@@ -233,8 +249,21 @@ extension WeatherVM {
 extension WeatherVM {
     // MARK: - Method to select city and fetch weather (Combine)
     func selectCityAndFetchWeather(_ cityName: String) {
+        print("🎯 selectCityAndFetchWeather called with: \(cityName)")
+        print("🏙️ Previous selected city: \(selectedCity)")
+        
+        // Clear previous error first
+        errorMessage = nil
+        
+        // Update selected city immediately
         selectedCity = cityName
-        citySuggestions = [] // Clear suggestions
+        print("✅ Updated selectedCity to: \(selectedCity)")
+        
+        // Clear suggestions immediately
+        citySuggestions = []
+        print("🧹 Cleared suggestions")
+        
+        // Start loading and fetch new weather data
         fetchForecastWithCombine(for: cityName)
     }
     
@@ -480,6 +509,22 @@ extension WeatherVM {
                 print("    uv: \(day.day.uv?.description ?? "NIL")")
             }
         }
+    }
+    
+    private func printWeatherDebugInfo() {
+        guard let weather = currentWeather else {
+            print("🔍 DEBUG: No weather data available")
+            return
+        }
+        
+        print("🔍 DEBUG Weather Info:")
+        print("  📍 Location: \(weather.location.name), \(weather.location.country)")
+        print("  🌡️ Temperature: \(weather.current.tempC?.description ?? "nil")°C")
+        print("  💨 Wind: \(weather.current.windKph?.description ?? "nil") km/h")
+        print("  💧 Humidity: \(weather.current.humidity)%")
+        print("  ☁️ Condition: \(weather.current.condition.text)")
+        print("  📅 Forecast days: \(weather.forecastDays.count)")
+        print("  🏙️ Selected city: \(selectedCity)")
     }
     
     // MARK: - Método para agregar debug en fetchForecastWithCombine

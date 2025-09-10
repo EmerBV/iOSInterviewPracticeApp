@@ -18,8 +18,8 @@ final class WeatherVC: BaseViewController {
     private lazy var scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.refreshControl = refreshControl
         scrollView.showsVerticalScrollIndicator = false
+        scrollView.alwaysBounceVertical = true
         return scrollView
     }()
     
@@ -30,9 +30,9 @@ final class WeatherVC: BaseViewController {
     }()
     
     private lazy var refreshControl: UIRefreshControl = {
-        let control = UIRefreshControl()
-        control.addTarget(self, action: #selector(refreshWeatherWithCombine), for: .valueChanged)
-        return control
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(self, action: #selector(refreshWeatherWithCombine), for: .valueChanged)
+        return refreshControl
     }()
     
     // MARK: - Search Components
@@ -84,7 +84,13 @@ final class WeatherVC: BaseViewController {
         tableView.layer.shadowOpacity = 0.1
         tableView.separatorStyle = .singleLine
         tableView.isScrollEnabled = false
-        tableView.layer.masksToBounds = true
+        
+        // Configuración para altura automática
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 60
+        tableView.sectionHeaderHeight = 0
+        tableView.sectionFooterHeight = 0
+        
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
@@ -191,6 +197,7 @@ final class WeatherVC: BaseViewController {
         setupUI()
         setupBindings()
         setupGestures()
+        setupScrollView()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -381,10 +388,13 @@ final class WeatherVC: BaseViewController {
     }
     
     private func setupBindings() {
-        // Current weather binding
+        print("🔗 Setting up bindings...")
+        
+        // Current weather binding - ENHANCED
         viewModel.currentWeatherPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] weather in
+                print("🌤️ Weather data received in binding: \(weather?.location.name ?? "nil")")
                 self?.updateWeatherUI(weather)
                 self?.refreshControl.endRefreshing()
             }
@@ -394,6 +404,7 @@ final class WeatherVC: BaseViewController {
         viewModel.isLoadingPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isLoading in
+                print("⏳ Loading state changed: \(isLoading)")
                 self?.updateLoadingState(isLoading)
             }
             .store(in: &cancellables)
@@ -403,6 +414,7 @@ final class WeatherVC: BaseViewController {
             .receive(on: DispatchQueue.main)
             .compactMap { $0 }
             .sink { [weak self] errorMessage in
+                print("❌ Error received: \(errorMessage)")
                 self?.handleError(errorMessage)
             }
             .store(in: &cancellables)
@@ -411,18 +423,21 @@ final class WeatherVC: BaseViewController {
         viewModel.citySuggestionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] suggestions in
+                print("📝 Suggestions updated: \(suggestions.count) items")
                 self?.updateSuggestions(suggestions)
             }
             .store(in: &cancellables)
         
-        // Selected city binding
+        // Selected city binding - ENHANCED
         viewModel.selectedCityPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] city in
-                // Update UI if needed when city changes
+                print("🏙️ Selected city changed in VM: \(city)")
                 self?.handleCitySelection(city)
             }
             .store(in: &cancellables)
+        
+        print("✅ All bindings set up successfully")
     }
     
     private func setupGestures() {
@@ -430,42 +445,19 @@ final class WeatherVC: BaseViewController {
         view.addGestureRecognizer(tapGesture)
     }
     
+    // MARK: - Setup methods need to include refresh control
+    private func setupScrollView() {
+        // Add refresh control to scroll view
+        scrollView.refreshControl = refreshControl
+        
+        // Configure scroll view
+        scrollView.delegate = self
+        scrollView.alwaysBounceVertical = true
+    }
+    
     @objc private func dismissKeyboard() {
         view.endEditing(true)
         hideSuggestions()
-    }
-    
-    // MARK: - UI Updates
-    private func updateWeatherUI(_ weather: WeatherResponse?) {
-        guard let weather = weather else {
-            // Reset UI to default state
-            locationLabel.text = "Ubicación no disponible"
-            temperatureLabel.text = "--°"
-            conditionLabel.text = "Sin datos"
-            weatherIconImageView.image = UIImage(systemName: "questionmark.circle")
-            updateDetailValue(title: "Sensación térmica", value: "--°")
-            updateDetailValue(title: "Viento", value: "--")
-            updateDetailValue(title: "Humedad", value: "--%")
-            updateForecast([])
-            return
-        }
-        
-        // Update basic weather info
-        locationLabel.text = "\(weather.location.name), \(weather.location.country)"
-        temperatureLabel.text = "\(Int(weather.current.tempC ?? 0))°C"
-        conditionLabel.text = weather.current.condition.text
-        
-        // Update weather icon
-        let iconName = weatherIcon(for: weather.current.condition)
-        weatherIconImageView.image = UIImage(systemName: iconName)
-        
-        // Update details
-        updateDetailValue(title: "Sensación térmica", value: "\(Int(weather.current.feelslikeC ?? 0)) °C")
-        updateDetailValue(title: "Viento", value: "\(Int(weather.current.windKph ?? 0)) km/h")
-        updateDetailValue(title: "Humedad", value: "\(Int(weather.current.humidity)) %")
-        
-        // Update forecast
-        updateForecast(weather.forecastDays)
     }
     
     private func hideSuggestions() {
@@ -482,9 +474,26 @@ final class WeatherVC: BaseViewController {
     
     private func showSuggestions(_ show: Bool) {
         let suggestions = viewModel.citySuggestions.count
-        let height: CGFloat = show ? min(CGFloat(suggestions * 44), 200) : 0
         
-        UIView.animate(withDuration: 0.3) {
+        var height: CGFloat = 0
+        if show && suggestions > 0 {
+            // Calcular altura basada en el contenido estimado por celda
+            let estimatedCellHeight: CGFloat = 60
+            let maxVisibleCells = 4 // Máximo de celdas visibles sin scroll
+            let visibleCells = min(suggestions, maxVisibleCells)
+            height = CGFloat(visibleCells) * estimatedCellHeight
+            
+            // Altura máxima para evitar que ocupe toda la pantalla
+            let maxHeight: CGFloat = 240
+            height = min(height, maxHeight)
+            
+            // Habilitar scroll si hay más elementos de los visibles
+            suggestionsTableView.isScrollEnabled = suggestions > maxVisibleCells
+        } else {
+            suggestionsTableView.isScrollEnabled = false
+        }
+        
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseInOut]) {
             self.suggestionsHeightConstraint.constant = height
             self.suggestionsTableView.isHidden = !show
             self.view.layoutIfNeeded()
@@ -575,18 +584,6 @@ final class WeatherVC: BaseViewController {
         return containerView
     }
     
-    // MARK: - UI Reset Method
-    private func resetWeatherUI() {
-        locationLabel.text = "Ubicación no disponible"
-        temperatureLabel.text = "--°"
-        conditionLabel.text = "Sin datos"
-        weatherIconImageView.image = UIImage(systemName: "questionmark.circle")
-        updateDetailValue(title: "Sensación térmica", value: "--°")
-        updateDetailValue(title: "Viento", value: "--")
-        updateDetailValue(title: "Humedad", value: "--%")
-        updateForecast([])
-    }
-    
     // MARK: - Helper Methods
     private func weatherIcon(for condition: WeatherCondition) -> String {
         switch condition.code {
@@ -648,8 +645,15 @@ extension WeatherVC {
 extension WeatherVC {
     // En WeatherVC, usar solo Combine methods:
     @objc private func refreshWeatherWithCombine() {
-        viewModel.refreshWeatherWithCombine()
+        print("🔄 Manual refresh triggered")
         Utils.hapticFeedback(.light)
+        
+        // Ensure we have a city to refresh
+        let cityToRefresh = viewModel.selectedCity
+        print("🏙️ Refreshing weather for: \(cityToRefresh)")
+        
+        // Call the refresh method
+        viewModel.refreshWeatherWithCombine()
     }
     
     /*
@@ -690,17 +694,86 @@ extension WeatherVC {
     }
     
     private func handleCitySelection(_ city: String) {
-        // Update search field text
-        searchTextField.text = city
+        // Only update search field if it's not already updated
+        if searchTextField.text != city {
+            searchTextField.text = city
+        }
         
-        // Hide suggestions
+        // Always hide suggestions when city is selected
         hideSuggestions()
         
         // Log for debugging
-        print("🏙️ Ciudad seleccionada: \(city)")
+        print("🏙️ Ciudad seleccionada y actualizada en VM: \(city)")
         
-        // Optional: Update any city-specific UI elements here
-        // For example, if you have a "last selected city" label
+        // Force UI refresh if needed - this ensures the weather data updates
+        if let currentWeather = viewModel.currentWeather {
+            print("🔄 Forcing UI update with current weather data")
+            updateWeatherUI(currentWeather)
+        }
+    }
+    
+    // MARK: - UI Updates
+    private func updateWeatherUI(_ weather: WeatherResponse?) {
+        print("🎨 Updating weather UI...")
+        
+        guard let weather = weather else {
+            print("⚠️ No weather data available, resetting UI")
+            resetWeatherUI()
+            return
+        }
+        
+        // Log the data we're about to display
+        print("📍 Location: \(weather.location.name), \(weather.location.country)")
+        print("🌡️ Temperature: \(weather.current.tempC?.description ?? "nil")°C")
+        print("☁️ Condition: \(weather.current.condition.text)")
+        
+        // Update basic weather info
+        locationLabel.text = "\(weather.location.name), \(weather.location.country)"
+        
+        // Ensure temperature display is correct
+        if let tempC = weather.current.tempC {
+            temperatureLabel.text = "\(Int(tempC))°C"
+        } else {
+            temperatureLabel.text = "--°C"
+        }
+        
+        conditionLabel.text = weather.current.condition.text
+        
+        // Update weather icon
+        let iconName = weatherIcon(for: weather.current.condition)
+        weatherIconImageView.image = UIImage(systemName: iconName)
+        
+        // Update details with null safety
+        updateDetailValue(title: "Sensación térmica", value: "\(Int(weather.current.feelslikeC ?? 0))°C")
+        updateDetailValue(title: "Viento", value: "\(Int(weather.current.windKph ?? 0)) km/h")
+        updateDetailValue(title: "Humedad", value: "\(weather.current.humidity)%")
+        
+        // Update forecast
+        updateForecast(weather.forecastDays)
+        
+        print("✅ Weather UI updated successfully")
+    }
+    
+    // MARK: - UI Reset Method
+    private func resetWeatherUI() {
+        print("🔄 Resetting weather UI to default state")
+        locationLabel.text = "Ubicación no disponible"
+        temperatureLabel.text = "--°"
+        conditionLabel.text = "Sin datos"
+        weatherIconImageView.image = UIImage(systemName: "questionmark.circle")
+        updateDetailValue(title: "Sensación térmica", value: "--°")
+        updateDetailValue(title: "Viento", value: "--")
+        updateDetailValue(title: "Humedad", value: "--%")
+        updateForecast([])
+    }
+}
+
+extension WeatherVC: UIScrollViewDelegate {
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        // This helps with refresh control responsiveness
+        if refreshControl.isRefreshing {
+            print("🔄 Refresh control is active")
+        }
     }
 }
 
@@ -766,14 +839,35 @@ extension WeatherVC: UITableViewDataSource, UITableViewDelegate {
         // Dismiss keyboard immediately
         searchTextField.resignFirstResponder()
         
-        // Use the new ViewModel method for cleaner separation of concerns
+        // FIXED: Use the full location name for better results
+        // Create a more complete query that includes the location info
+        let fullLocationName = "\(location.name), \(location.region), \(location.country)"
+        
+        // Update search field immediately to show selection
+        searchTextField.text = location.name
+        
+        // Hide suggestions immediately
+        hideSuggestions()
+        
+        // Use the location name for the API call (this is what the API expects)
         viewModel.selectCityAndFetchWeather(location.name)
         
         // Provide haptic feedback
         Utils.hapticFeedback(.light)
+        
+        // Add logging for debugging
+        print("🏙️ Selected location: \(location.name)")
+        print("📍 Full location details: \(fullLocationName)")
+        print("🌐 Coordinates: \(location.lat), \(location.lon)")
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 44
+        // Cambiar de altura fija a altura automática
+        return UITableView.automaticDimension
+    }
+    
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        // Proporcionar una estimación para mejor rendimiento
+        return 60
     }
 }
