@@ -84,12 +84,14 @@ final class SwiftUIIntegrationWithNavVC: BaseViewController {
         navigationItem.rightBarButtonItems = [refreshButton, randomButton]
         
         // Search button (optional)
+        /*
         let searchButton = UIBarButtonItem(
             barButtonSystemItem: .search,
             target: self,
             action: #selector(searchTapped)
         )
         navigationItem.leftBarButtonItem = searchButton
+         */
     }
     
     private func setupBindings() {
